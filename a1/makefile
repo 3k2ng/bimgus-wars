@@ -1,10 +1,13 @@
 SOURCE = $(wildcard *.s)
 OUTPUT = $(patsubst %.s,%.prg,$(SOURCE))
 
-all: $(OUTPUT)
+all: export_dir $(OUTPUT)
+
+export_dir:
+	mkdir export
 
 %.prg: %.s
-	dasm $< -o_$@ -l$(<:.s=.lst)
+	dasm $< -oexport/_$@ -lexport/$(<:.s=.lst)
 
 clean: 
-	$(RM) *.prg *.lst
+	$(RM) -rf export
