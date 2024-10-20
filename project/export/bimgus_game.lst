@@ -1,0 +1,243 @@
+------- FILE bimgus_game.s LEVEL 1 PASS 3
+      1  1163 ????						; tank_control.s
+      2  1163 ????						;
+      3  1163 ????						; use the control from read input to draw the tank
+      4  1163 ????						; no color yet
+      5  1163 ????
+      6  1163 ????				      processor	6502
+      7  1163 ????
+      8  1163 ????	       1c 00	   CHARACTER_RAM =	$1c00
+      9  1163 ????
+     10  1163 ????	       00 fd	   HALF_SCREEN =	$fd
+     11  1163 ????	       1e 00	   SCREEN_RAM_UPPER =	$1e00
+     12  1163 ????	       1e fd	   SCREEN_RAM_LOWER =	$1efd
+     13  1163 ????	       96 00	   COLOR_RAM_UPPER =	$9600
+     14  1163 ????	       96 fd	   COLOR_RAM_LOWER =	$96fd
+     15  1163 ????
+     16  1163 ????	       00 1f	   UP_DOWN_KEY_CODE =	$1f
+     17  1163 ????	       00 17	   LEFT_RIGHT_KEY_CODE =	$17
+     18  1163 ????
+     19  1163 ????	       00 e0	   SPACE_SCREEN_CODE =	$e0
+     20  1163 ????	       00 01	   WHITE_COLOR_CODE =	1
+     21  1163 ????
+     22  1163 ????	       00 16	   SCREEN_WIDTH =	22
+     23  1163 ????	       00 10	   MAP_WIDTH  =	16
+     24  1163 ????	       00 10	   MAP_HEIGHT =	16
+     25  1163 ????
+     26  1163 ????						; zero page variable position
+     27  1163 ????	       00 00	   SCREEN_RAM_VAR =	$00	; variable for offsetting into screen ram
+     28  1163 ????	       00 02	   X_VAR      =	$02	; x for keeping track of drawing cursor
+     29  1163 ????	       00 03	   Y_VAR      =	$03	; y for keeping track of drawing cursor
+     30  1163 ????	       00 04	   LAST_KEY   =	$04	; last key pressed
+     31  1163 ????	       00 05	   X_POS      =	$05	; tank position x
+     32  1163 ????	       00 06	   Y_POS      =	$06	; tank position y
+     33  1163 ????	       00 07	   ROT	      =	$07	; tank rotation
+     34  1163 ????	       00 c5	   CURRENT_KEY =	$c5	; automatically updated current key held
+     35  1163 ????
+     36  1001					      org	$1001
+     37  1001
+     38  1001							; BASIC stub
+     39  1001		       0b 10		      dc.w	nextstmt
+     40  1003		       0a 00		      dc.w	10
+     41  1005		       9e 34 31 30*	      dc.b	$9e, [start]d, 0
+     42  100b				   nextstmt
+     43  100b		       00 00		      dc.w	0
+     44  100d
+     45  100d							; main
+     46  100d				   start
+     47  100d
+     48  100d							; set character location to character ram
+     49  100d		       a9 ff		      lda	#$ff
+     50  100f		       8d 05 90 	      sta	$9005
+     51  1012
+     52  1012							; set screen and border color
+     53  1012		       a9 0b		      lda	#$0b
+     54  1014		       8d 0f 90 	      sta	$900f
+     55  1017
+     56  1017							; copy custom character to character ram
+     57  1017		       a2 00		      ldx	#0
+     58  1019				   ccr_loop
+     59  1019		       bd 03 11 	      lda	tank_char,X
+     60  101c		       9d 00 1c 	      sta	CHARACTER_RAM,X
+     61  101f		       e8		      inx
+     62  1020		       e0 80		      cpx	#8*16
+     63  1022		       d0 f5		      bne	ccr_loop
+     64  1024
+     65  1024							; initiate variables
+     66  1024		       a9 40		      lda	#$40	; last key pressed is empty
+     67  1026		       85 04		      sta	LAST_KEY
+     68  1028		       a9 08		      lda	#$08	; start at the middle of the screen
+     69  102a		       85 05		      sta	X_POS
+     70  102c		       85 06		      sta	Y_POS
+     71  102e		       a9 00		      lda	#$00	; start facing up
+     72  1030		       85 07		      sta	ROT
+     73  1032
+     74  1032		       4c 8e 10 	      jmp	draw_update	; start with a draw
+     75  1035
+     76  1035							; inf_loop is the game loop
+     77  1035				   inf_loop
+     78  1035							; check key
+     79  1035		       a5 c5		      lda	CURRENT_KEY
+     80  1037		       c5 04		      cmp	LAST_KEY
+     81  1039		       85 04		      sta	LAST_KEY
+     82  103b		       f0 08		      beq	skip_draw	; if no key changed, make no change
+     83  103d
+     84  103d		       c9 1f		      cmp	#UP_DOWN_KEY_CODE
+     85  103f		       f0 07		      beq	on_move
+     86  1041
+     87  1041		       c9 17		      cmp	#LEFT_RIGHT_KEY_CODE
+     88  1043		       f0 41		      beq	on_rotate
+     89  1045
+     90  1045				   skip_draw
+     91  1045		       4c 00 11 	      jmp	finish_update	; key not accounted for
+     92  1048
+     93  1048				   on_move
+     94  1048		       a5 07		      lda	ROT
+     95  104a		       c9 00		      cmp	#$0
+     96  104c		       f0 0c		      beq	move_up
+     97  104e		       c9 01		      cmp	#$1
+     98  1050		       f0 13		      beq	move_left
+     99  1052		       c9 02		      cmp	#$2
+    100  1054		       f0 1a		      beq	move_down
+    101  1056		       c9 03		      cmp	#$3
+    102  1058		       f0 21		      beq	move_right
+    103  105a
+    104  105a				   move_up
+    105  105a		       c6 06		      dec	Y_POS
+    106  105c		       a5 06		      lda	Y_POS
+    107  105e		       29 0f		      and	#$0f	; y_pos %= 16
+    108  1060		       85 06		      sta	Y_POS
+    109  1062		       4c 8e 10 	      jmp	draw_update
+    110  1065
+    111  1065				   move_left
+    112  1065		       c6 05		      dec	X_POS
+    113  1067		       a5 05		      lda	X_POS
+    114  1069		       29 0f		      and	#$0f	; x_pos %= 16
+    115  106b		       85 05		      sta	X_POS
+    116  106d		       4c 8e 10 	      jmp	draw_update
+    117  1070
+    118  1070				   move_down
+    119  1070		       e6 06		      inc	Y_POS
+    120  1072		       a5 06		      lda	Y_POS
+    121  1074		       29 0f		      and	#$0f	; y_pos %= 16
+    122  1076		       85 06		      sta	Y_POS
+    123  1078		       4c 8e 10 	      jmp	draw_update
+    124  107b
+    125  107b				   move_right
+    126  107b		       e6 05		      inc	X_POS
+    127  107d		       a5 05		      lda	X_POS
+    128  107f		       29 0f		      and	#$0f	; x_pos %= 16
+    129  1081		       85 05		      sta	X_POS
+    130  1083		       4c 8e 10 	      jmp	draw_update
+    131  1086
+    132  1086				   on_rotate
+    133  1086		       e6 07		      inc	ROT
+    134  1088		       a5 07		      lda	ROT
+    135  108a		       29 03		      and	#$03	; rotation %= 4
+    136  108c		       85 07		      sta	ROT
+    137  108e
+    138  108e				   draw_update
+    139  108e							; clear screen
+    140  108e		       a9 e0		      lda	#SPACE_SCREEN_CODE
+    141  1090		       a2 00		      ldx	#0
+    142  1092				   csr_screen_ul
+    143  1092		       9d 00 1e 	      sta	SCREEN_RAM_UPPER,X
+    144  1095		       e8		      inx
+    145  1096		       e0 fd		      cpx	#HALF_SCREEN
+    146  1098		       d0 f8		      bne	csr_screen_ul
+    147  109a
+    148  109a		       a9 e0		      lda	#SPACE_SCREEN_CODE
+    149  109c		       a2 00		      ldx	#0
+    150  109e				   csr_screen_ll
+    151  109e		       9d fd 1e 	      sta	SCREEN_RAM_LOWER,X
+    152  10a1		       e8		      inx
+    153  10a2		       e0 fd		      cpx	#HALF_SCREEN
+    154  10a4		       d0 f8		      bne	csr_screen_ll
+    155  10a6
+    156  10a6							; fill screen with color WHITE
+    157  10a6		       a9 01		      lda	#WHITE_COLOR_CODE
+    158  10a8		       a2 00		      ldx	#0
+    159  10aa				   csr_color_ul
+    160  10aa		       9d 00 96 	      sta	COLOR_RAM_UPPER,X
+    161  10ad		       e8		      inx
+    162  10ae		       e0 fd		      cpx	#HALF_SCREEN
+    163  10b0		       d0 f8		      bne	csr_color_ul
+    164  10b2
+    165  10b2		       a9 01		      lda	#WHITE_COLOR_CODE
+    166  10b4		       a2 00		      ldx	#0
+    167  10b6				   csr_color_ll
+    168  10b6		       9d fd 96 	      sta	COLOR_RAM_LOWER,X
+    169  10b9		       e8		      inx
+    170  10ba		       e0 fd		      cpx	#HALF_SCREEN
+    171  10bc		       d0 f8		      bne	csr_color_ll
+    172  10be
+    173  10be							; initiate screen ram pointer
+    174  10be		       a9 45		      lda	#$45
+    175  10c0		       85 00		      sta	SCREEN_RAM_VAR
+    176  10c2		       a9 1e		      lda	#$1e
+    177  10c4		       85 01		      sta	SCREEN_RAM_VAR+1
+    178  10c6
+    179  10c6							; initiate y
+    180  10c6		       a9 00		      lda	#0
+    181  10c8		       85 03		      sta	Y_VAR
+    182  10ca				   y_loop
+    183  10ca							; initiate x
+    184  10ca		       a9 00		      lda	#0
+    185  10cc		       85 02		      sta	X_VAR
+    186  10ce				   x_loop
+    187  10ce							; check if we're at the right position
+    188  10ce		       a5 02		      lda	X_VAR
+    189  10d0		       c5 05		      cmp	X_POS
+    190  10d2		       d0 0f		      bne	skip_tank
+    191  10d4		       a5 03		      lda	Y_VAR
+    192  10d6		       c5 06		      cmp	Y_POS
+    193  10d8		       d0 09		      bne	skip_tank
+    194  10da
+    195  10da							; rotation also represent the correct char to draw
+    196  10da		       a5 07		      lda	ROT
+    197  10dc		       0a		      asl
+    198  10dd		       65 07		      adc	ROT
+    199  10df							; put map data on screen
+    200  10df		       a4 02		      ldy	X_VAR
+    201  10e1		       91 00		      sta	(SCREEN_RAM_VAR),y
+    202  10e3				   skip_tank
+    203  10e3		       c8		      iny
+    204  10e4		       84 02		      sty	X_VAR
+    205  10e6							; check if x hit map width
+    206  10e6		       c0 10		      cpy	#MAP_WIDTH
+    207  10e8		       d0 e4		      bne	x_loop
+    208  10ea
+    209  10ea							; increment SCREEN_RAM_VAR everytime we increment y
+    210  10ea		       18		      clc
+    211  10eb		       a5 00		      lda	SCREEN_RAM_VAR
+    212  10ed		       69 16		      adc	#SCREEN_WIDTH
+    213  10ef		       85 00		      sta	SCREEN_RAM_VAR
+    214  10f1		       a5 01		      lda	SCREEN_RAM_VAR+1
+    215  10f3		       69 00		      adc	#0
+    216  10f5		       85 01		      sta	SCREEN_RAM_VAR+1
+    217  10f7		       a6 03		      ldx	Y_VAR
+    218  10f9		       e8		      inx
+    219  10fa		       86 03		      stx	Y_VAR
+    220  10fc							; check if y hit map height
+    221  10fc		       e0 10		      cpx	#MAP_HEIGHT
+    222  10fe		       d0 ca		      bne	y_loop
+    223  1100
+    224  1100				   finish_update
+    225  1100		       4c 35 10 	      jmp	inf_loop
+    226  1103
+    227  1103				   tank_char
+------- FILE ./chars/tank.s LEVEL 2 PASS 3
+      0  1103					      include	"./chars/tank.s"
+      1  1103		       3c 18 db ff*	      dc.b	$3c, $18, $db, $ff, $ff, $ff, $ff, $c3
+      2  110b		       00 00 00 00*	      dc.b	$0, $0, $0, $0, $3c, $18, $db, $ff
+      3  1113		       ff ff ff c3*	      dc.b	$ff, $ff, $ff, $c3, $0, $0, $0, $0
+      4  111b		       3f 3f 9e fe*	      dc.b	$3f, $3f, $9e, $fe, $fe, $9e, $3f, $3f
+      5  1123		       03 03 09 0f*	      dc.b	$3, $3, $9, $f, $f, $9, $3, $3
+      6  112b		       f0 f0 e0 e0*	      dc.b	$f0, $f0, $e0, $e0, $e0, $e0, $f0, $f0
+      7  1133		       c3 ff ff ff*	      dc.b	$c3, $ff, $ff, $ff, $ff, $db, $18, $3c
+      8  113b		       00 00 00 00*	      dc.b	$0, $0, $0, $0, $c3, $ff, $ff, $ff
+      9  1143		       ff db 18 3c*	      dc.b	$ff, $db, $18, $3c, $0, $0, $0, $0
+     10  114b		       fc fc 79 7f*	      dc.b	$fc, $fc, $79, $7f, $7f, $79, $fc, $fc
+     11  1153		       0f 0f 07 07*	      dc.b	$f, $f, $7, $7, $7, $7, $f, $f
+     12  115b		       c0 c0 90 f0*	      dc.b	$c0, $c0, $90, $f0, $f0, $90, $c0, $c0
+------- FILE bimgus_game.s
