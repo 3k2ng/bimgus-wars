@@ -148,10 +148,10 @@ title_cm_loc
         dc.w title_cm
 
 title_char
-        include "./chars/title_char.s"
+        include "./data/title_char_set.s"
 
 title_map
-        include "./maps/title_map.s"
+        include "./data/title_char_map.s"
 
 title_cm
-        include "./maps/title_cm.s"
+        include "./data/title_color_map.s"
