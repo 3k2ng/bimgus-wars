@@ -102,19 +102,20 @@ for c in TITLE_TEXT:
     elif ord("0") <= ord(c) <= ord("9"):
         text2id[c] = ord(c) - ord("0") + 176
 
-with open(f"./{OUTPUT_NAME}_char_map.s", "w") as f:
-    j = 0
-    for i in range(23):
-        hex_bytes = []
-        for byte in char_map[i * 22 : (i + 1) * 22]:
-            if byte < 0:
-                hex_bytes.append(text2id[TITLE_TEXT[j]])
-                j += 1
-            else:
-                hex_bytes.append(byte)
+title_text_index = 0
+for i, byte in enumerate(char_map):
+    if byte < 0:
+        char_map[i] = text2id[TITLE_TEXT[title_text_index]]
+        title_text_index += 1
 
+with open(f"./{OUTPUT_NAME}_char_map.s", "w") as f:
+    for i in range(23):
         f.write(
-            "\tdc.b " + ", ".join(["${:02x}".format(byte) for byte in hex_bytes]) + "\n"
+            "\tdc.b "
+            + ", ".join(
+                ["${:02x}".format(byte) for byte in char_map[i * 22 : (i + 1) * 22]]
+            )
+            + "\n"
         )
 
 with open(f"./{OUTPUT_NAME}_color_map.s", "w") as f:
