@@ -3,6 +3,7 @@ import imageio.v3 as iio
 import numpy as np
 
 EMPTY_CODE = 0
+WHITE_CODE = 1
 RED_CODE = 2
 GREEN_CODE = 5
 
@@ -11,6 +12,7 @@ SCREEN_WIDTH = 22
 SCREEN_HEIGHT = 23
 TOTAL_SCREEN_SIZE = SCREEN_WIDTH * SCREEN_HEIGHT
 
+TITLE_TEXT = "BIMGUSWARSURMOM2024"
 OFF_SYMBOLS, ON_SYMBOLS = ".", "#"
 
 INPUT_IMAGE_NAME = sys.argv[1]
@@ -27,7 +29,9 @@ bit_arr = np.array(
                     RED_CODE
                     if p[0] == 172 and p[1] == 50 and p[2] == 50
                     else (
-                        GREEN_CODE if p[0] == 106 and p[1] == 190 and p[2] == 48 else 1
+                        GREEN_CODE
+                        if p[0] == 106 and p[1] == 190 and p[2] == 48
+                        else WHITE_CODE
                     )
                 )
             )
@@ -39,10 +43,9 @@ bit_arr = np.array(
 
 data2count = {}
 data2id = {
-    "........\n........\n........\n........\n........\n........\n........\n........": 96
-    + 128,
-    "####....\n####....\n####....\n####....\n####....\n####....\n####....\n####....": 97
-    + 128,
+    "########\n##.....#\n#.#....#\n#..#...#\n#...#..#\n#....#.#\n#.....##\n########": -1,
+    "........\n........\n........\n........\n........\n........\n........\n........": 224,
+    "####....\n####....\n####....\n####....\n####....\n####....\n####....\n####....": 225,
 }
 
 uc = 0
@@ -74,6 +77,7 @@ for data in data2id.keys():
     id2data[id] = data
 
 with open(f"./{OUTPUT_NAME}_char_set.s", "w") as f:
+    f.write(f"TITLE_CHAR_SET_SIZE = {uc * 8}\n")
     for i in range(uc):
         byte_bin = [
             int(
@@ -91,14 +95,26 @@ with open(f"./{OUTPUT_NAME}_char_set.s", "w") as f:
             "\tdc.b " + ", ".join(["${:02x}".format(byte) for byte in byte_bin]) + "\n"
         )
 
+text2id = {}
+for c in TITLE_TEXT:
+    if ord("A") <= ord(c) <= ord("Z"):
+        text2id[c] = ord(c) - ord("A") + 129
+    elif ord("0") <= ord(c) <= ord("9"):
+        text2id[c] = ord(c) - ord("0") + 176
+
 with open(f"./{OUTPUT_NAME}_char_map.s", "w") as f:
+    j = 0
     for i in range(23):
+        hex_bytes = []
+        for byte in char_map[i * 22 : (i + 1) * 22]:
+            if byte < 0:
+                hex_bytes.append(text2id[TITLE_TEXT[j]])
+                j += 1
+            else:
+                hex_bytes.append(byte)
+
         f.write(
-            "\tdc.b "
-            + ", ".join(
-                ["${:02x}".format(byte) for byte in char_map[i * 22 : (i + 1) * 22]]
-            )
-            + "\n"
+            "\tdc.b " + ", ".join(["${:02x}".format(byte) for byte in hex_bytes]) + "\n"
         )
 
 with open(f"./{OUTPUT_NAME}_color_map.s", "w") as f:

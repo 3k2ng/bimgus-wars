@@ -1,3 +1,4 @@
+TITLE_CHAR_SET_SIZE = 248
 	dc.b $07, $1f, $3c, $70, $60, $e0, $c1, $c1
 	dc.b $c0, $f0, $fc, $ff, $ff, $ff, $ff, $ff
 	dc.b $00, $00, $00, $00, $c0, $f0, $fc, $ff

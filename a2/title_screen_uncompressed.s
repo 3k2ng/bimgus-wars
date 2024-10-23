@@ -55,7 +55,7 @@ ccr_loop
         lda title_char,x
         sta CHARACTER_RAM,x
         inx
-        cpx #0
+        cpx TITLE_CHAR_SET_SIZE
         bne ccr_loop
 
 ; copy map data to screen ram
