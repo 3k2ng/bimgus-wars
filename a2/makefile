@@ -5,8 +5,8 @@ all: clean export_dir $(ALL)
 export_dir:
 	mkdir export
 
-title_data: ./data/gen_title.py ./data/title_image.png
-	python ./data/gen_title.py ./data/title_image.png ./data/title
+title_data: ./data/gen_title.py ./data/make_files.py ./data/title_image.png
+	python ./data/make_files.py ./data
 
 ./title_screen_uncompressed.prg: ./title_screen_uncompressed.s title_data
 	dasm $< -oexport/_$@ -lexport/$(<:.s=.lst)
