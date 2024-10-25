@@ -1,7 +1,7 @@
 # custom compression
 # RLE + LZW
 
-# special character: $7f (b l)
+# special character: $7E (b l)
 #   => go back b characters
 #   => fill the content with the next l characters
 
@@ -25,19 +25,22 @@ def hcc_encode(char_map):
                             b, l = i - j, prl
                         break
         if l > 1:
-            encoded_map += [0x7F, b, l]
+            encoded_map += [0x7E, b, l]
         else:
             encoded_map += [char_map[i]]
         i += l
         back_i = max(i - 255, back_i)
+    encoded_map += [0x7F]
     return encoded_map
 
 
 def hcc_decode(encoded_map):
     decoded_map = []
     i = 0
-    while i < len(encoded_map):
+    while True:
         if encoded_map[i] == 0x7F:
+            break
+        elif encoded_map[i] == 0x7E:
             back_i = len(decoded_map) - encoded_map[i + 1]
             l = encoded_map[i + 2]
             for j in range(l):

@@ -10,25 +10,28 @@
 
 CHARACTER_RAM = $1c00
 
-SCREEN_WIDTH = 22
-SCREEN_HEIGHT = 23
+SCREEN_RAM = $1e00
+; screen_ram split into 2 bytes
+SCRB0 = $00
+SCRB1 = $1e
 
-        seg.u zp
-        org $0
+COLOR_RAM = $9600
+; color_ram split into 2 bytes
+CORB0 = $00
+CORB1 = $96
+
 ; zero page variable position
-SCREEN_RAM_VAR
-        ds.w 1
-COLOR_RAM_VAR
-        ds.w 1
-MAP_DATA_VAR
-        ds.w 1
-CM_DATA_VAR
-        ds.w 1
-X_VAR
-        ds.b 1
-Y_VAR
-        ds.b 1
-        seg
+; decoding subroutine
+; decoded data location (moving)
+DECODED_DATA_LOC = $00 ; 2 bytes
+; encoded data location (moving)
+ENCODED_DATA_LOC = $02 ; 2 bytes
+; where to read when reading buffer data (moving)
+BACKREAD_DATA_LOC = $04 ; 2 bytes
+; location on backread data
+BACKREAD_INDEX = $06 ; 1 byte
+; count down for back reading data
+BACKREAD_COUNT = $07 ; 1 byte
 
 	org $1001
 
@@ -58,87 +61,129 @@ ccr_loop
         cpx TITLE_CHAR_SET_SIZE
         bne ccr_loop
 
-; copy map data to screen ram
-        ; initiate screen ram address and map data offset on the zero page
-        lda #$00
-        sta SCREEN_RAM_VAR
-        lda #$1e
-        sta SCREEN_RAM_VAR+1
-        lda #$00
-        sta COLOR_RAM_VAR
-        lda #$96
-        sta COLOR_RAM_VAR+1
-        lda umap_loc
-        sta MAP_DATA_VAR
-        lda umap_loc+1
-        sta MAP_DATA_VAR+1
-        lda ucm_loc
-        sta CM_DATA_VAR
-        lda ucm_loc+1
-        sta CM_DATA_VAR+1
+        lda #SCRB0
+        sta DECODED_DATA_LOC
+        lda #SCRB1
+        sta DECODED_DATA_LOC+1
+        lda hmap_loc
+        sta ENCODED_DATA_LOC
+        lda hmap_loc+1
+        sta ENCODED_DATA_LOC+1
+        jsr hcc_decode
 
-        ; initiate y
-        lda #0
-        sta Y_VAR
-y_loop
-        ; initiate x
-        lda #0
-        sta X_VAR
-x_loop
-        ; load map data at (x, y)
-        ; put map data on screen
-        ldy X_VAR
-        lda (MAP_DATA_VAR),y
-        sta (SCREEN_RAM_VAR),y
-        lda (CM_DATA_VAR),y
-        sta (COLOR_RAM_VAR),y
-        iny
-        sty X_VAR
-        ; check if x hit map width
-        cpy #SCREEN_WIDTH
-        bne x_loop
+        lda #CORB0
+        sta DECODED_DATA_LOC
+        lda #CORB1
+        sta DECODED_DATA_LOC+1
+        lda hcm_loc
+        sta ENCODED_DATA_LOC
+        lda hcm_loc+1
+        sta ENCODED_DATA_LOC+1
+        jsr hcc_decode
 
-        ; increment SCREEN_RAM_VAR everytime we increment y
-        clc
-        lda MAP_DATA_VAR
-        adc #SCREEN_WIDTH
-        sta MAP_DATA_VAR
-        lda MAP_DATA_VAR+1
-        adc #0
-        sta MAP_DATA_VAR+1
-
-        clc
-        lda SCREEN_RAM_VAR
-        adc #SCREEN_WIDTH
-        sta SCREEN_RAM_VAR
-        lda SCREEN_RAM_VAR+1
-        adc #0
-        sta SCREEN_RAM_VAR+1
-
-        clc
-        lda CM_DATA_VAR
-        adc #SCREEN_WIDTH
-        sta CM_DATA_VAR
-        lda CM_DATA_VAR+1
-        adc #0
-        sta CM_DATA_VAR+1
-
-        clc
-        lda COLOR_RAM_VAR
-        adc #SCREEN_WIDTH
-        sta COLOR_RAM_VAR
-        lda COLOR_RAM_VAR+1
-        adc #0
-        sta COLOR_RAM_VAR+1
-
-        ldx Y_VAR
-        inx
-        stx Y_VAR
-        ; check if y hit map height
-        cpx #SCREEN_HEIGHT
-        bne y_loop
- 
 inf_loop
         jmp inf_loop
 
-        include "./data/uncompressed_data.s"
+; decoding subroutine
+hcc_decode
+decode_loop
+        ldy #00
+        lda (ENCODED_DATA_LOC),y
+        cmp #$7f
+        beq decode_done
+        cmp #$7e
+        beq backread_start
+
+        sta (DECODED_DATA_LOC),y
+
+        clc
+        lda ENCODED_DATA_LOC
+        adc #01
+        sta ENCODED_DATA_LOC
+        lda ENCODED_DATA_LOC+1
+        adc #00
+        sta ENCODED_DATA_LOC+1
+
+        clc
+        lda DECODED_DATA_LOC
+        adc #01
+        sta DECODED_DATA_LOC
+        lda DECODED_DATA_LOC+1
+        adc #00
+        sta DECODED_DATA_LOC+1
+
+        jmp decode_loop
+decode_done
+        jmp decode_exit
+
+backread_start
+        lda DECODED_DATA_LOC
+        sta BACKREAD_DATA_LOC
+        lda DECODED_DATA_LOC+1
+        sta BACKREAD_DATA_LOC+1
+        ldy #01
+        lda (ENCODED_DATA_LOC),y
+        sta BACKREAD_INDEX
+        ldy #02
+        lda (ENCODED_DATA_LOC),y
+        sta BACKREAD_COUNT
+        clc
+        lda ENCODED_DATA_LOC
+        adc #03
+        sta ENCODED_DATA_LOC
+        lda ENCODED_DATA_LOC+1
+        adc #00
+        sta ENCODED_DATA_LOC+1
+
+        clc
+        lda BACKREAD_DATA_LOC
+        adc #01
+        sta BACKREAD_DATA_LOC
+        lda BACKREAD_DATA_LOC+1
+        adc #00
+        sta BACKREAD_DATA_LOC+1
+
+        clc
+        lda BACKREAD_DATA_LOC
+        sbc BACKREAD_INDEX
+        sta BACKREAD_DATA_LOC
+        lda BACKREAD_DATA_LOC+1
+        sbc #00
+        sta BACKREAD_DATA_LOC+1
+
+backread_loop
+        lda BACKREAD_COUNT
+        cmp #00
+        beq backread_exit
+
+        ldy #00
+        lda (BACKREAD_DATA_LOC),y
+        sta (DECODED_DATA_LOC),y
+
+        clc
+        lda BACKREAD_DATA_LOC
+        adc #01
+        sta BACKREAD_DATA_LOC
+        lda BACKREAD_DATA_LOC+1
+        adc #00
+        sta BACKREAD_DATA_LOC+1
+
+        clc
+        lda DECODED_DATA_LOC
+        adc #01
+        sta DECODED_DATA_LOC
+        lda DECODED_DATA_LOC+1
+        adc #00
+        sta DECODED_DATA_LOC+1
+
+        dec BACKREAD_COUNT
+
+        jmp backread_loop
+
+backread_exit
+        jmp decode_loop
+
+decode_exit
+        rts
+
+        include "./data/hcc_data.s"
