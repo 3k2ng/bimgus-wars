@@ -100,6 +100,11 @@ def gen_data(input_image):
             char_map[i] = text2id[TITLE_TEXT[title_text_index]]
             title_text_index += 1
 
+    color_map[0] = WHITE_CODE
+    for i in range(len(color_map)):
+        if i > 0 and color_map[i] == EMPTY_CODE and color_map[i - 1] > EMPTY_CODE:
+            color_map[i] = color_map[i - 1]
+
     return {
         "char_set": char_set,
         "char_map": char_map,
