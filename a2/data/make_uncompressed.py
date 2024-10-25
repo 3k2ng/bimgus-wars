@@ -7,8 +7,9 @@ char_set = title_data["char_set"]
 char_map = title_data["char_map"]
 color_map = title_data["color_map"]
 
-with open(f"{data_dir}/title_char_set.s", "w") as f:
+with open(f"{data_dir}/uncompressed_data.s", "w") as f:
     f.write(f"TITLE_CHAR_SET_SIZE = {len(char_set)}\n")
+    f.write(f"uncompressed_char_set\n")
     for i in range(len(char_set) // 8):
         f.write(
             "\tdc.b "
@@ -18,7 +19,9 @@ with open(f"{data_dir}/title_char_set.s", "w") as f:
             + "\n"
         )
 
-with open(f"{data_dir}/title_char_map.s", "w") as f:
+    f.write(f"umap_loc\n")
+    f.write(f"\tdc.w uncompressed_char_map\n")
+    f.write(f"uncompressed_char_map\n")
     for i in range(23):
         f.write(
             "\tdc.b "
@@ -28,7 +31,9 @@ with open(f"{data_dir}/title_char_map.s", "w") as f:
             + "\n"
         )
 
-with open(f"{data_dir}/title_color_map.s", "w") as f:
+    f.write(f"ucm_loc\n")
+    f.write(f"\tdc.w uncompressed_color_map\n")
+    f.write(f"uncompressed_color_map\n")
     for i in range(23):
         f.write(
             "\tdc.b "
