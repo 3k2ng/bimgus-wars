@@ -1,4 +1,4 @@
-ALL = title_screen_uncompressed.prg title_screen_hcc.prg
+ALL = title_screen_uncompressed.prg title_screen_hcc.prg title_screen_zx02.prg
 
 all: clean export_dir $(ALL)
 
@@ -15,6 +15,9 @@ title_screen_uncompressed.prg: ./title_screen_uncompressed.s uncompressed_data
 	dasm $< -oexport/_$@ -lexport/$(<:.s=.lst)
 
 title_screen_hcc.prg: ./title_screen_hcc.s hcc_data
+	dasm $< -oexport/_$@ -lexport/$(<:.s=.lst)
+
+title_screen_zx02.prg: ./title_screen_zx02.s ./data/zx02-optim.asm
 	dasm $< -oexport/_$@ -lexport/$(<:.s=.lst)
 
 clean_data:
