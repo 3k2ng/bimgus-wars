@@ -42,13 +42,13 @@ decode_literal
 
 cop0          lda   (ZX0_src),Y
               inc   ZX0_src
-              bne   @+
+              bne   test4 ; JCH
               inc   ZX0_src+1
-@             sta   (ZX0_dst),Y
+test4         sta   (ZX0_dst),Y ; JCH
               inc   ZX0_dst
-              bne   @+
+              bne   test5 ; JCH
               inc   ZX0_dst+1
-@             dex
+test5         dex ; JCH
               bne   cop0
 
               asl   bitr
@@ -68,13 +68,13 @@ dzx0s_copy
 cop1
               lda   (pntr),Y
               inc   pntr
-              bne   @+
+              bne   test1 ; JCH
               inc   pntr+1
-@             sta   (ZX0_dst),Y
+test1         sta   (ZX0_dst),Y ; JCH
               inc   ZX0_dst
-              bne   @+
+              bne   test2 ; JCH
               inc   ZX0_dst+1
-@             dex
+test2         dex ; JCH
               bne   cop1
 
               asl   bitr
@@ -89,17 +89,17 @@ dzx0s_new_offset
               ; Decrease and divide by 2
               dex
               txa
-              lsr   @
+              lsr ; JCH
               sta   offset+1
 
               ; Get low part of offset, a literal 7 bits
               lda   (ZX0_src),Y
               inc   ZX0_src
-              bne   @+
+              bne   test3 ; JCH
               inc   ZX0_src+1
-@
+test3 ; JCH
               ; Divide by 2
-              ror   @
+              ror ; JCH
               sta   offset
 
               ; And get the copy length.
@@ -119,7 +119,7 @@ get_elias
 
 elias_get     ; Read next data bit to result
               asl   bitr
-              rol   @
+              rol
               tax
 
 elias_start
@@ -130,10 +130,10 @@ elias_start
               ; Read new bit from stream
               lda   (ZX0_src),Y
               inc   ZX0_src
-              bne   @+
+              bne   test6 ; JCH
               inc   ZX0_src+1
-@             ;sec   ; not needed, C=1 guaranteed from last bit
-              rol   @
+test6         ;sec   ; not needed, C=1 guaranteed from last bit ; JCH
+              rol ; JCH
               sta   bitr
 
 elias_skip1
