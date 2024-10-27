@@ -1,65 +1,88 @@
-from collections import defaultdict
+import struct
 
-def build_dictionary(data, max_dict_size=256):
-    """Build a dictionary of the most common patterns in the data."""
-    pattern_count = defaultdict(int)
-
-    # Collect all two-byte patterns and their frequencies
-    for i in range(len(data) - 1):
-        pattern = (data[i], data[i + 1])
-        pattern_count[pattern] += 1
-
-    # Sort patterns by frequency and keep only the most frequent ones
-    sorted_patterns = sorted(pattern_count.items(), key=lambda x: -x[1])
-    dictionary = {pattern[0]: idx for idx, pattern in enumerate(sorted_patterns[:max_dict_size])}
-    
-    return dictionary
-
-def compress(data):
-    """Compress data using RLE and Dictionary encoding."""
-    dictionary = build_dictionary(data)
+def rle_compress(data):
+    """Compress data using pure Run-Length Encoding (RLE)."""
     compressed = []
-    
     i = 0
+
     while i < len(data):
-        # Check if the next two-byte pattern is in the dictionary
-        if i < len(data) - 1 and (data[i], data[i + 1]) in dictionary:
-            code = dictionary[(data[i], data[i + 1])]
-            compressed.append((code, 1))  # Store dictionary code and count 1
-            i += 2  # Skip the pattern
-        else:
-            # Apply RLE for repeated values
-            value = data[i]
-            count = 1
-            while i + count < len(data) and data[i + count] == value:
-                count += 1
-            compressed.append((value, count))  # Store value and count
-            i += count  # Skip the repeated values
+        value = data[i]
+        count = 1
 
-    return compressed, dictionary
+        # Count consecutive occurrences of the same value (up to 255)
+        while i + count < len(data) and data[i + count] == value and count < 255:
+            count += 1
 
-def decompress(compressed, dictionary):
-    """Decompress data using the provided dictionary and compressed data."""
+        # Store (value, count) pair
+        compressed.append((value, count))
+        i += count
+
+    return compressed
+
+def rle_decompress(compressed):
+    """Decompress data compressed with RLE."""
     decompressed = []
-    
-    # Reverse the dictionary to map codes back to patterns
-    reverse_dict = {v: k for k, v in dictionary.items()}
-    
     for value, count in compressed:
-        if value in reverse_dict:  # If it's a dictionary code
-            pattern = reverse_dict[value]
-            decompressed.extend(pattern * count)
-        else:  # Regular RLE entry
-            decompressed.extend([value] * count)
+        decompressed.extend([value] * count)
 
     return decompressed
 
-# Example usage
-data = [0xAA, 0xBB, 0xBB, 0xBB, 0xAA, 0xBB, 0xBB, 0xBB, 0xAA]
-compressed, dictionary = compress(data)
-print("Compressed:", compressed)
-print("Dictionary:", dictionary)
+def write_rle_to_bin(compressed, output_file):
+    """Write compressed RLE data to a .bin file."""
+    with open(output_file, 'wb') as f:
+        for value, count in compressed:
+            f.write(struct.pack('BB', value, count))
 
-decompressed = decompress(compressed, dictionary)
-print("Decompressed:\n", decompressed)
-print("Data:\n", data)
+def read_rle_from_bin(input_file):
+    """Read compressed RLE data from a .bin file."""
+    compressed = []
+    with open(input_file, 'rb') as f:
+        while True:
+            entry = f.read(2)
+            if not entry:
+                break
+            value, count = struct.unpack('BB', entry)
+            compressed.append((value, count))
+
+    return compressed
+
+def main(input_file, compressed_file, decompressed_file):
+    """Main function to compress and decompress binary data."""
+    # Read input binary file
+    with open(input_file, 'rb') as f:
+        data = list(f.read())
+
+    # Compress the data using RLE
+    compressed = rle_compress(data)
+    write_rle_to_bin(compressed, compressed_file)
+
+    # Check sizes
+    original_size = len(data)
+    compressed_size = len(compressed) * 2  # Each entry is 2 bytes
+
+    print(f"Original size: {original_size} bytes")
+    print(f"Compressed size: {compressed_size} bytes")
+
+    if compressed_size < original_size:
+        print("Compression successful!")
+
+        # Decompress to verify
+        compressed_data = read_rle_from_bin(compressed_file)
+        decompressed = rle_decompress(compressed_data)
+
+        # Write decompressed data to a file
+        with open(decompressed_file, 'wb') as f:
+            f.write(bytearray(decompressed))
+
+        print("Decompression completed and verified!")
+    else:
+        print("Compression not effective. Skipping decompression.")
+
+# Example usage
+if __name__ == "__main__":
+    # input_file = "input.bin"            # Replace with your input file
+    input_file = "./char_map.bin"            # Replace with your input file
+    compressed_file = "compressed.bin"  # Output compressed file
+    decompressed_file = "decompressed.bin"  # Output decompressed file
+
+    main(input_file, compressed_file, decompressed_file)
