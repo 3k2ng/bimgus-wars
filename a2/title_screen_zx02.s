@@ -33,4 +33,4 @@ nextstmt
 start
         rts
 
-        include "./data/zx02-optim.asm"
+        ; include "./data/zx02-optim.asm"

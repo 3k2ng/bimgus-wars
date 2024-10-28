@@ -20,12 +20,82 @@ ZX0_dst equ ZP+4
 bitr    equ ZP+6
 pntr    equ ZP+7
 
+
+CHARACTER_RAM = $1c00
+; character_ram split into 2 bytes
+CHRB0 = $00
+CHRB1 = $1c
+
+SCREEN_RAM = $1e00
+; screen_ram split into 2 bytes
+SCRB0 = $00
+SCRB1 = $1e
+
+COLOR_RAM = $9600
+; color_ram split into 2 bytes
+CORB0 = $00
+CORB1 = $96
+
 	org $1001
+
+; BASIC stub 
+        dc.w nextstmt
+        dc.w 10
+        dc.b $9e, [start]d, 0
+nextstmt
+        dc.w 0
+
+; main
+start
+; set character location to character ram
+        lda #$ff
+        sta $9005
+
+; set screen and border color
+        lda #$0b
+        sta $900f
+
+; call the subroutine three times
+        ; char set
+        jsr full_decomp
+        ; char map
+        lda zx0_ini_block_char_map
+        sta zx0_ini_block+2
+        lda zx0_ini_block_char_map+1
+        sta zx0_ini_block+3
+        lda zx0_ini_block_char_map+2
+        sta zx0_ini_block+4
+        lda zx0_ini_block_char_map+3
+        sta zx0_ini_block+5
+        jsr full_decomp
+        ; color map
+        lda zx0_ini_block_color_map
+        sta zx0_ini_block+2
+        lda zx0_ini_block_color_map+1
+        sta zx0_ini_block+3
+        lda zx0_ini_block_color_map+2
+        sta zx0_ini_block+4
+        lda zx0_ini_block_color_map+3
+        sta zx0_ini_block+5
+        jsr full_decomp
+inf_loop
+        jmp inf_loop
+
 
         ; Initial values for offset, source, destination and bitr
 zx0_ini_block
-;       dc.b $00, $00, <comp_data, >comp_data, <out_addr, >out_addr, $80
-        dc.b $00, $00, $69,        $f9,        $ce,       $cf,       $80 ;JCH
+        ; dc.b $00, $00, <comp_data, >comp_data, <out_addr, >out_addr, $80
+        dc.b $00, $00
+        dc.w zx02_char_set, CHARACTER_RAM
+        dc.b $80
+; zx0_ini_block_char_set
+;         dc.b $00, $00
+;         dc.w zx02_char_set, CHARACTER_RAM
+;         dc.b $80
+zx0_ini_block_char_map
+        dc.w zx02_char_map, SCREEN_RAM
+zx0_ini_block_color_map
+        dc.w zx02_color_map, COLOR_RAM
 
 ;--------------------------------------------------
 ; Decompress ZX0 data (6502 optimized format)
@@ -148,3 +218,4 @@ elias_skip1
 exit
         rts
 
+        include "./data/zx02_data.s"
