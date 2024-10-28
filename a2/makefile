@@ -1,18 +1,20 @@
-ALL = title_screen_uncompressed.prg title_screen_hcc.prg zx02_data
+ALL = title_screen_uncompressed.prg title_screen_umc.prg title_screen_zx02.prg
 
 all: clean export_dir $(ALL)
 
 export_dir:
 	mkdir export
 
-bin_data: ./data/gen_title.py ./data/make_bin.py ./data/title_image.png
+bin_data: ./data/make_bin.py ./data/title_image.png
 	python ./data/make_bin.py ./data
 
-uncompressed_data: ./data/gen_title.py ./data/make_uncompressed.py ./data/title_image.png
+uncompressed_data: bin_data ./data/make_uncompressed.py ./data/title_image.png
 	python ./data/make_uncompressed.py ./data
 
-hcc_data: ./data/gen_title.py ./data/make_hcc.py ./data/hcc.py ./data/title_image.png
-	python ./data/make_hcc.py ./data
+umc_data: bin_data ./data/umc.py ./data/make_umc.py 
+	python ./data/umc.py ./data/char_map.bin ./data/char_map.umc
+	python ./data/umc.py ./data/color_map.bin ./data/color_map.umc
+	python ./data/make_umc.py ./data
 
 zx02_data: bin_data ./data/zx02 ./data/make_zx02.py
 	./data/zx02 ./data/char_set.bin ./data/char_set.zx02
@@ -23,10 +25,10 @@ zx02_data: bin_data ./data/zx02 ./data/make_zx02.py
 title_screen_uncompressed.prg: ./title_screen_uncompressed.s uncompressed_data
 	dasm $< -oexport/_$@ -lexport/$(<:.s=.lst)
 
-title_screen_hcc.prg: ./title_screen_hcc.s hcc_data
+title_screen_umc.prg: ./title_screen_umc.s umc_data
 	dasm $< -oexport/_$@ -lexport/$(<:.s=.lst)
 
-title_screen_zx02.prg: ./title_screen_zx02.s ./data/zx02-optim.asm
+title_screen_zx02.prg: ./title_screen_zx02.s zx02_data
 	dasm $< -oexport/_$@ -lexport/$(<:.s=.lst)
 
 clean_data:

@@ -9,26 +9,17 @@
 	processor 6502
 
 CHARACTER_RAM = $1c00
+SCREEN_RAM = $1e00
+COLOR_RAM = $9600
 
-SCREEN_WIDTH = 22
-SCREEN_HEIGHT = 23
-
-        seg.u zp
-        org $0
 ; zero page variable position
-SCREEN_RAM_VAR
-        ds.w 1
-COLOR_RAM_VAR
-        ds.w 1
-MAP_DATA_VAR
-        ds.w 1
-CM_DATA_VAR
-        ds.w 1
-X_VAR
-        ds.b 1
-Y_VAR
-        ds.b 1
-        seg
+; decoding subroutine
+; decoded data location (moving)
+DATA_DST_LOC = $00 ; 2 bytes
+; encoded data location (moving)
+DATA_SRC_LOC = $02 ; 2 bytes
+; back of encoded data chunk (moving)
+SRC_END_LOC = $04 ; 2 bytes
 
 	org $1001
 
@@ -49,96 +40,78 @@ start
         lda #$0b
         sta $900f
 
-; copy custom character to character ram
-        ldx #0
-ccr_loop
-        lda uncompressed_char_set,x
-        sta CHARACTER_RAM,x
-        inx
-        cpx TITLE_CHAR_SET_SIZE
-        bne ccr_loop
-
-; copy map data to screen ram
-        ; initiate screen ram address and map data offset on the zero page
-        lda #$00
-        sta SCREEN_RAM_VAR
-        lda #$1e
-        sta SCREEN_RAM_VAR+1
-        lda #$00
-        sta COLOR_RAM_VAR
-        lda #$96
-        sta COLOR_RAM_VAR+1
-        lda umap_loc
-        sta MAP_DATA_VAR
-        lda umap_loc+1
-        sta MAP_DATA_VAR+1
-        lda ucm_loc
-        sta CM_DATA_VAR
-        lda ucm_loc+1
-        sta CM_DATA_VAR+1
-
-        ; initiate y
-        lda #0
-        sta Y_VAR
-y_loop
-        ; initiate x
-        lda #0
-        sta X_VAR
-x_loop
-        ; load map data at (x, y)
-        ; put map data on screen
-        ldy X_VAR
-        lda (MAP_DATA_VAR),y
-        sta (SCREEN_RAM_VAR),y
-        lda (CM_DATA_VAR),y
-        sta (COLOR_RAM_VAR),y
-        iny
-        sty X_VAR
-        ; check if x hit map width
-        cpy #SCREEN_WIDTH
-        bne x_loop
-
-        ; increment SCREEN_RAM_VAR everytime we increment y
-        clc
-        lda MAP_DATA_VAR
-        adc #SCREEN_WIDTH
-        sta MAP_DATA_VAR
-        lda MAP_DATA_VAR+1
-        adc #0
-        sta MAP_DATA_VAR+1
-
-        clc
-        lda SCREEN_RAM_VAR
-        adc #SCREEN_WIDTH
-        sta SCREEN_RAM_VAR
-        lda SCREEN_RAM_VAR+1
-        adc #0
-        sta SCREEN_RAM_VAR+1
-
-        clc
-        lda CM_DATA_VAR
-        adc #SCREEN_WIDTH
-        sta CM_DATA_VAR
-        lda CM_DATA_VAR+1
-        adc #0
-        sta CM_DATA_VAR+1
-
-        clc
-        lda COLOR_RAM_VAR
-        adc #SCREEN_WIDTH
-        sta COLOR_RAM_VAR
-        lda COLOR_RAM_VAR+1
-        adc #0
-        sta COLOR_RAM_VAR+1
-
-        ldx Y_VAR
-        inx
-        stx Y_VAR
-        ; check if y hit map height
-        cpx #SCREEN_HEIGHT
-        bne y_loop
+        lda character_ram_args
+        sta DATA_DST_LOC
+        lda character_ram_args+1
+        sta DATA_DST_LOC+1
+        lda character_ram_args+2
+        sta DATA_SRC_LOC
+        lda character_ram_args+3
+        sta DATA_SRC_LOC+1
+        lda character_ram_args+4
+        sta SRC_END_LOC
+        lda character_ram_args+5
+        sta SRC_END_LOC+1
+        jsr copy_data
  
+        lda screen_ram_args
+        sta DATA_DST_LOC
+        lda screen_ram_args+1
+        sta DATA_DST_LOC+1
+        lda screen_ram_args+2
+        sta DATA_SRC_LOC
+        lda screen_ram_args+3
+        sta DATA_SRC_LOC+1
+        lda screen_ram_args+4
+        sta SRC_END_LOC
+        lda screen_ram_args+5
+        sta SRC_END_LOC+1
+        jsr copy_data
+
+        lda color_ram_args
+        sta DATA_DST_LOC
+        lda color_ram_args+1
+        sta DATA_DST_LOC+1
+        lda color_ram_args+2
+        sta DATA_SRC_LOC
+        lda color_ram_args+3
+        sta DATA_SRC_LOC+1
+        lda color_ram_args+4
+        sta SRC_END_LOC
+        lda color_ram_args+5
+        sta SRC_END_LOC+1
+        jsr copy_data
+
 inf_loop
         jmp inf_loop
+
+; copy subroutine, just need to copy the argument location to subroutine input location
+copy_data
+        ldy #00
+copy_loop
+        lda (DATA_SRC_LOC),y
+        sta (DATA_DST_LOC),y
+        inc DATA_SRC_LOC
+        bne sc0
+        inc DATA_SRC_LOC+1
+sc0
+        inc DATA_DST_LOC
+        bne sc1
+        inc DATA_DST_LOC+1
+sc1
+        lda DATA_SRC_LOC
+        cmp SRC_END_LOC
+        bne copy_loop
+        lda DATA_SRC_LOC+1
+        cmp SRC_END_LOC+1
+        bne copy_loop
+        rts
+
+character_ram_args
+        dc.w CHARACTER_RAM, uncompressed_char_set, uncompressed_char_set_end
+screen_ram_args
+        dc.w SCREEN_RAM, uncompressed_char_map, uncompressed_char_map_end
+color_ram_args
+        dc.w COLOR_RAM, uncompressed_color_map, uncompressed_color_map_end
 
         include "./data/uncompressed_data.s"

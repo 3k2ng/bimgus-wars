@@ -51,10 +51,10 @@ start
 ; copy custom character to character ram
         ldx #0
 ccr_loop
-        lda uncompressed_char_set,x
+        lda umc_char_set,x
         sta CHARACTER_RAM,x
         inx
-        cpx TITLE_CHAR_SET_SIZE
+        cpx umc_char_set_end-umc_char_set
         bne ccr_loop
 
 ; decode data at hmap to screen ram
@@ -62,28 +62,28 @@ ccr_loop
         sta DECODED_DATA_LOC
         lda #SCRB1
         sta DECODED_DATA_LOC+1
-        lda hmap_loc
+        lda screen_data_loc
         sta ENCODED_DATA_LOC
-        lda hmap_loc+1
+        lda screen_data_loc+1
         sta ENCODED_DATA_LOC+1
-        jsr hcc_decode
+        jsr umc_decode
 
 ; decode data at hcm to color ram
         lda #CORB0
         sta DECODED_DATA_LOC
         lda #CORB1
         sta DECODED_DATA_LOC+1
-        lda hcm_loc
+        lda color_data_loc
         sta ENCODED_DATA_LOC
-        lda hcm_loc+1
+        lda color_data_loc+1
         sta ENCODED_DATA_LOC+1
-        jsr hcc_decode
+        jsr umc_decode
 
 inf_loop
         jmp inf_loop
 
 ; decoding subroutine
-hcc_decode
+umc_decode
 decode_loop
         ldy #00
         lda (ENCODED_DATA_LOC),y ; y = 0
@@ -154,4 +154,9 @@ backread_exit
 decode_exit
         rts
 
-        include "./data/hcc_data.s"
+screen_data_loc
+        dc.w umc_char_map
+color_data_loc
+        dc.w umc_color_map
+
+        include "./data/umc_data.s"
