@@ -57,6 +57,8 @@ ccr_loop
         cpx TITLE_CHAR_SET_SIZE
         bne ccr_loop
 
+ccr2_loop
+
 ; decode data at hmap to screen ram
         lda #SCRB0
         sta DECODED_DATA_LOC
@@ -83,38 +85,30 @@ inf_loop
         jmp inf_loop
 
 ; decoding subroutine
-hcc_decode:
-decode_loop:
-    ldy #00
-    lda (ENCODED_DATA_LOC),y     ; Load value to be repeated
-    iny
-    lda (ENCODED_DATA_LOC),y     ; Load run-length
-    tax                         ; Store run-length in X register
+hcc_decode
+decode_loop
+        ldy #00
+        lda (ENCODED_DATA_LOC),y ; y = 0
+        cmp #$7f
+        beq decode_done
+        cmp #$7e
+        beq backread_start
 
-repeat_loop:
-    lda (ENCODED_DATA_LOC-1),y   ; Load the value again
-    sta (DECODED_DATA_LOC),y     ; Store it in decoded location
+        sta (DECODED_DATA_LOC),y ; y = 0
 
-    inc DECODED_DATA_LOC
-    bne sc0
-    inc DECODED_DATA_LOC+1
-sc0:
-    dex                         ; Decrement run-length counter
-    bne repeat_loop             ; Repeat if X > 0
+        inc ENCODED_DATA_LOC
+        bne sc0
+        inc ENCODED_DATA_LOC+1
+sc0
 
-    inc ENCODED_DATA_LOC         ; Move to the next value
-    bne sc1
-    inc ENCODED_DATA_LOC+1
-sc1:
-    
-    lda (ENCODED_DATA_LOC),y     ; Check for end of data marker ($7F)
-    cmp #$7f
-    beq decode_done
+        inc DECODED_DATA_LOC
+        bne sc1
+        inc DECODED_DATA_LOC+1
+sc1
 
-    jmp decode_loop             ; Continue decoding
-
-decode_done:
-    rts
+        jmp decode_loop
+decode_done
+        jmp decode_exit
 
 backread_start
         clc
@@ -162,5 +156,4 @@ backread_exit
 decode_exit
         rts
 
-        ;include "./data/hcc_data.s"
-        include "./data/rle_data.s"
+        include "./data/hcc_data.s"
