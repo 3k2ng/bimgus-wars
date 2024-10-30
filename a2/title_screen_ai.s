@@ -4,9 +4,9 @@
 ; game name: BIMGUS WARS
 ; team name: UR MOM
 ; year: 2024
-; title picture: 1 green tank facing 3 red tanks
+; title picture: 1 green tank facing 3 red tank
 
-    processor 6502
+	processor 6502
 
 CHARACTER_RAM = $1c00
 
@@ -21,6 +21,7 @@ CORB0 = $00
 CORB1 = $96
 
 ; zero page variable position
+; decoding subroutine
 ; decoded data location (moving)
 DECODED_DATA_LOC = $00 ; 2 bytes
 ; encoded data location (moving)
@@ -28,7 +29,7 @@ ENCODED_DATA_LOC = $02 ; 2 bytes
 ; where to read when reading buffer data (moving)
 BACKREAD_DATA_LOC = $04 ; 2 bytes
 
-    org $1001
+	org $1001
 
 ; BASIC stub 
         dc.w nextstmt
@@ -65,7 +66,7 @@ ccr_loop
         sta ENCODED_DATA_LOC
         lda hmap_loc+1
         sta ENCODED_DATA_LOC+1
-        jsr rle_decode  ; Call the RLE decoding routine
+        jsr hcc_decode
 
 ; decode data at hcm to color ram
         lda #CORB0
@@ -76,109 +77,90 @@ ccr_loop
         sta ENCODED_DATA_LOC
         lda hcm_loc+1
         sta ENCODED_DATA_LOC+1
-        jsr rle_decode  ; Call the RLE decoding routine
+        jsr hcc_decode
 
 inf_loop
         jmp inf_loop
 
-; RLE decoding subroutine
-rle_decode:
-    ldy #0              ; Initialize index Y
-decode_rle_loop:
-    lda (ENCODED_DATA_LOC),y ; y = 0
-    iny
-    lda (ENCODED_DATA_LOC),y   ; Read count (second byte of the tuple)
-    tay                       ; Store count in Y
-
-rle_copy_loop:
-    lda (ENCODED_DATA_LOC),y  ; Copy value to the decoded location
-    sta (DECODED_DATA_LOC),y
-    inc DECODED_DATA_LOC       ; Increment decoded data pointer
-    bne rle_copy_next
-    inc DECODED_DATA_LOC+1     ; Handle high byte overflow
-rle_copy_next:
-    dey                        ; Decrement count
-    bne rle_copy_loop          ; If count not zero, keep copying
-
-    iny                        ; Move to next RLE tuple
-    iny
-    inc ENCODED_DATA_LOC       ; Advance encoded data pointer
-    bne decode_rle_loop        ; Continue until all data is decoded
-
-rle_decode_done:
-    rts                        ; Return from subroutine
-
-; Original decoding subroutine (optional, if needed elsewhere)
+; decoding subroutine
 hcc_decode:
 decode_loop:
     ldy #00
-    lda (ENCODED_DATA_LOC),y
+    lda (ENCODED_DATA_LOC),y     ; Load value to be repeated
+    iny
+    lda (ENCODED_DATA_LOC),y     ; Load run-length
+    tax                         ; Store run-length in X register
+
+repeat_loop:
+    lda (ENCODED_DATA_LOC-1),y   ; Load the value again
+    sta (DECODED_DATA_LOC),y     ; Store it in decoded location
+
+    inc DECODED_DATA_LOC
+    bne sc0
+    inc DECODED_DATA_LOC+1
+sc0:
+    dex                         ; Decrement run-length counter
+    bne repeat_loop             ; Repeat if X > 0
+
+    inc ENCODED_DATA_LOC         ; Move to the next value
+    bne sc1
+    inc ENCODED_DATA_LOC+1
+sc1:
+    
+    lda (ENCODED_DATA_LOC),y     ; Check for end of data marker ($7F)
     cmp #$7f
     beq decode_done
-    cmp #$7e
-    beq backread_start
 
-    sta (DECODED_DATA_LOC),y
+    jmp decode_loop             ; Continue decoding
 
-    inc ENCODED_DATA_LOC
-    bne sc0
-    inc ENCODED_DATA_LOC+1
-sc0:
-
-    inc DECODED_DATA_LOC
-    bne sc1
-    inc DECODED_DATA_LOC+1
-sc1:
-
-    jmp decode_loop
 decode_done:
-    jmp decode_exit
-
-backread_start:
-    clc
-    lda DECODED_DATA_LOC
-    adc #01
-    iny
-    sbc (ENCODED_DATA_LOC),y
-    sta BACKREAD_DATA_LOC
-    lda DECODED_DATA_LOC+1
-    sbc #00
-    sta BACKREAD_DATA_LOC+1
-
-    iny
-    lda (ENCODED_DATA_LOC),y
-    tax
-
-    ldy #00
-backread_loop:
-    lda (BACKREAD_DATA_LOC),y
-    sta (DECODED_DATA_LOC),y
-
-    inc BACKREAD_DATA_LOC
-    bne sc2
-    inc BACKREAD_DATA_LOC+1
-sc2:
-
-    inc DECODED_DATA_LOC
-    bne sc3
-    inc DECODED_DATA_LOC+1
-sc3:
-
-    dex
-    bne backread_loop
-
-backread_exit:
-    clc
-    lda ENCODED_DATA_LOC
-    adc #03
-    sta ENCODED_DATA_LOC
-    lda ENCODED_DATA_LOC+1
-    adc #00
-    sta ENCODED_DATA_LOC+1
-    jmp decode_loop
-
-decode_exit:
     rts
 
-    # include "./data/hcc_data.s"
-    include "./data/rle_data.s"
+backread_start
+        clc
+        lda DECODED_DATA_LOC
+        adc #01
+        iny ; y = 1
+        sbc (ENCODED_DATA_LOC),y
+        sta BACKREAD_DATA_LOC
+        lda DECODED_DATA_LOC+1
+        sbc #00
+        sta BACKREAD_DATA_LOC+1
+
+        iny ; y = 2
+        lda (ENCODED_DATA_LOC),y
+        tax
+
+        ldy #00
+backread_loop
+        lda (BACKREAD_DATA_LOC),y ; y = 0
+        sta (DECODED_DATA_LOC),y ; y = 0
+
+        inc BACKREAD_DATA_LOC
+        bne sc2
+        inc BACKREAD_DATA_LOC+1
+sc2
+
+        inc DECODED_DATA_LOC
+        bne sc3
+        inc DECODED_DATA_LOC+1
+sc3
+
+        dex
+        bne backread_loop ; if x == 0
+
+backread_exit
+        clc
+        lda ENCODED_DATA_LOC
+        adc #03
+        sta ENCODED_DATA_LOC
+        lda ENCODED_DATA_LOC+1
+        adc #00
+        sta ENCODED_DATA_LOC+1
+        jmp decode_loop
+
+decode_exit
+        rts
+
+        ;include "./data/hcc_data.s"
+        include "./data/rle_data.s"

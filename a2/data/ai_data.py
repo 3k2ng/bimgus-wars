@@ -26,6 +26,7 @@ color_map = read_bin_file(color_map_file)
 with open(f"{data_dir}/rle_data.s", "w") as f:
     # Write char set size and uncompressed_char_set data
     f.write(f"TITLE_CHAR_SET_SIZE = {len(char_set)}\n")
+    # f.write(f"TITLE_CHAR_SET_SIZE = 248\n")
     f.write(f"uncompressed_char_set\n")
     for i in range(0, len(char_set), 16):
         f.write(
