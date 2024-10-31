@@ -27,7 +27,7 @@ with open(f"{data_dir}/rle_data.s", "w") as f:
     # Write char set size and uncompressed_char_set data
     f.write(f"TITLE_CHAR_SET_SIZE = {len(char_set)}\n")
     # f.write(f"TITLE_CHAR_SET_SIZE = 248\n")
-    f.write(f"uncompressed_char_set\n")
+    f.write(f"compressed_char_set\n")
     for i in range(0, len(char_set), 16):
         f.write(
             "\tdc.b "
@@ -37,8 +37,8 @@ with open(f"{data_dir}/rle_data.s", "w") as f:
 
     # Write hmap_loc and char_map data
     f.write(f"hmap_loc\n")
-    f.write(f"\tdc.w hcc_char_map\n")
-    f.write(f"hcc_char_map\n")
+    f.write(f"\tdc.w rle_char_map\n")
+    f.write(f"rle_char_map\n")
     for i in range(0, len(char_map), 16):
         f.write(
             "\tdc.b "
@@ -48,8 +48,8 @@ with open(f"{data_dir}/rle_data.s", "w") as f:
 
     # Write hcm_loc and color_map data
     f.write(f"hcm_loc\n")
-    f.write(f"\tdc.w hcc_color_map\n")
-    f.write(f"hcc_color_map\n")
+    f.write(f"\tdc.w rle_color_map\n")
+    f.write(f"rle_color_map\n")
     for i in range(0, len(color_map), 16):
         f.write(
             "\tdc.b "

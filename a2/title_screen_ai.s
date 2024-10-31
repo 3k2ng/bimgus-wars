@@ -1,3 +1,10 @@
+; title_screen_ai.s
+;
+; displaying the title screen, code produced with the help of AI
+; game name: BIMGUS WARS
+; team name: UR MOM
+; year: 2024
+; title picture: 1 green tank facing 3 red tank
 	processor 6502
 
 CHARACTER_RAM = $1c00
@@ -38,9 +45,9 @@ start
         sta $900f
 
 ; copy custom character to character ram using RLE decoding
-        lda #<uncompressed_char_set
+        lda #<compressed_char_set
         sta SRC_PTR
-        lda #>uncompressed_char_set
+        lda #>compressed_char_set
         sta SRC_PTR+1
         
         lda #<CHARACTER_RAM
@@ -51,9 +58,9 @@ start
         jsr decode_rle
 
 ; decode screen data
-        lda #<hcc_char_map
+        lda #<rle_char_map
         sta SRC_PTR
-        lda #>hcc_char_map
+        lda #>rle_char_map
         sta SRC_PTR+1
         
         lda #SCRB0
@@ -64,9 +71,9 @@ start
         jsr decode_rle
 
 ; decode color data
-        lda #<hcc_color_map
+        lda #<rle_color_map
         sta SRC_PTR
-        lda #>hcc_color_map
+        lda #>rle_color_map
         sta SRC_PTR+1
         
         lda #CORB0
@@ -141,5 +148,4 @@ process_end
 decode_done
         rts
 
-        ;include "./data/hcc_data.s"
         include "./data/rle_data.s"
