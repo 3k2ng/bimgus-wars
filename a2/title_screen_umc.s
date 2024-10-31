@@ -1,4 +1,5 @@
-; title_screen.s
+; hand-designed compression for title screen
+; UMC compression: based on RLE and LZW compression, inspired by png implementation of png
 ;
 ; displaying the title screen
 ; game name: BIMGUS WARS
@@ -9,16 +10,8 @@
 	processor 6502
 
 CHARACTER_RAM = $1c00
-
 SCREEN_RAM = $1e00
-; screen_ram split into 2 bytes
-SCRB0 = $00
-SCRB1 = $1e
-
 COLOR_RAM = $9600
-; color_ram split into 2 bytes
-CORB0 = $00
-CORB1 = $96
 
 ; zero page variable position
 ; decoding subroutine
@@ -58,24 +51,24 @@ ccr_loop
         bne ccr_loop
 
 ; decode data at hmap to screen ram
-        lda #SCRB0
+        lda #<SCREEN_RAM
         sta DECODED_DATA_LOC
-        lda #SCRB1
+        lda #>SCREEN_RAM
         sta DECODED_DATA_LOC+1
-        lda screen_data_loc
+        lda #<umc_char_map
         sta ENCODED_DATA_LOC
-        lda screen_data_loc+1
+        lda #>umc_char_map
         sta ENCODED_DATA_LOC+1
         jsr umc_decode
 
 ; decode data at hcm to color ram
-        lda #CORB0
+        lda #<COLOR_RAM
         sta DECODED_DATA_LOC
-        lda #CORB1
+        lda #>COLOR_RAM
         sta DECODED_DATA_LOC+1
-        lda color_data_loc
+        lda #<umc_color_map
         sta ENCODED_DATA_LOC
-        lda color_data_loc+1
+        lda #>umc_color_map
         sta ENCODED_DATA_LOC+1
         jsr umc_decode
 
@@ -153,10 +146,5 @@ backread_exit
 
 decode_exit
         rts
-
-screen_data_loc
-        dc.w umc_char_map
-color_data_loc
-        dc.w umc_color_map
 
         include "./data/umc_data.s"

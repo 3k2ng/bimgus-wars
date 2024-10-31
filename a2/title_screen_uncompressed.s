@@ -1,4 +1,4 @@
-; title_screen.s
+; uncompressed title screen
 ;
 ; displaying the title screen
 ; game name: BIMGUS WARS
@@ -40,52 +40,56 @@ start
         lda #$0b
         sta $900f
 
-        lda character_ram_args
+; set up arguments on the zero page, and then call copy subroutine
+        ; copy character data
+        lda #<CHARACTER_RAM
         sta DATA_DST_LOC
-        lda character_ram_args+1
+        lda #>CHARACTER_RAM
         sta DATA_DST_LOC+1
-        lda character_ram_args+2
+        lda #<uncompressed_char_set
         sta DATA_SRC_LOC
-        lda character_ram_args+3
+        lda #>uncompressed_char_set
         sta DATA_SRC_LOC+1
-        lda character_ram_args+4
+        lda #<uncompressed_char_set_end
         sta SRC_END_LOC
-        lda character_ram_args+5
+        lda #>uncompressed_char_set_end
         sta SRC_END_LOC+1
         jsr copy_data
  
-        lda screen_ram_args
+        ; copy screen data
+        lda #<SCREEN_RAM
         sta DATA_DST_LOC
-        lda screen_ram_args+1
+        lda #>SCREEN_RAM
         sta DATA_DST_LOC+1
-        lda screen_ram_args+2
+        lda #<uncompressed_char_map
         sta DATA_SRC_LOC
-        lda screen_ram_args+3
+        lda #>uncompressed_char_map
         sta DATA_SRC_LOC+1
-        lda screen_ram_args+4
+        lda #<uncompressed_char_map_end
         sta SRC_END_LOC
-        lda screen_ram_args+5
+        lda #>uncompressed_char_map_end
         sta SRC_END_LOC+1
         jsr copy_data
 
-        lda color_ram_args
+        ; copy color data
+        lda #<COLOR_RAM
         sta DATA_DST_LOC
-        lda color_ram_args+1
+        lda #>COLOR_RAM
         sta DATA_DST_LOC+1
-        lda color_ram_args+2
+        lda #<uncompressed_color_map
         sta DATA_SRC_LOC
-        lda color_ram_args+3
+        lda #>uncompressed_color_map
         sta DATA_SRC_LOC+1
-        lda color_ram_args+4
+        lda #<uncompressed_color_map_end
         sta SRC_END_LOC
-        lda color_ram_args+5
+        lda #>uncompressed_color_map_end
         sta SRC_END_LOC+1
         jsr copy_data
 
 inf_loop
         jmp inf_loop
 
-; copy subroutine, just need to copy the argument location to subroutine input location
+; copy subroutine
 copy_data
         ldy #00
 copy_loop
@@ -106,12 +110,5 @@ sc1
         cmp SRC_END_LOC+1
         bne copy_loop
         rts
-
-character_ram_args
-        dc.w CHARACTER_RAM, uncompressed_char_set, uncompressed_char_set_end
-screen_ram_args
-        dc.w SCREEN_RAM, uncompressed_char_map, uncompressed_char_map_end
-color_ram_args
-        dc.w COLOR_RAM, uncompressed_color_map, uncompressed_color_map_end
 
         include "./data/uncompressed_data.s"
