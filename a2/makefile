@@ -22,6 +22,11 @@ zx02_data: bin_data ./data/zx02 ./data/make_zx02.py
 	./data/zx02 ./data/color_map.bin ./data/color_map.zx02
 	python ./data/make_zx02.py ./data
 
+
+ai_data: bin_data
+	python ./data/ai_compressor.py ./data/char_map.bin ./data/char_set.bin ./data/color_map.bin ./data/
+	python ./data/ai_data.py ./data/char_set_rle.bin ./data/char_map_rle.bin ./data/color_map_rle.bin ./data/
+
 title_screen_uncompressed.prg: ./title_screen_uncompressed.s uncompressed_data
 	dasm $< -oexport/_$@ -lexport/$(<:.s=.lst)
 
@@ -29,6 +34,9 @@ title_screen_umc.prg: ./title_screen_umc.s umc_data
 	dasm $< -oexport/_$@ -lexport/$(<:.s=.lst)
 
 title_screen_zx02.prg: ./title_screen_zx02.s zx02_data
+	dasm $< -oexport/_$@ -lexport/$(<:.s=.lst)
+
+title_screen_ai.prg: title_screen_ai.s  ai_data ./data/rle_data.s 
 	dasm $< -oexport/_$@ -lexport/$(<:.s=.lst)
 
 clean_data:
