@@ -1,4 +1,4 @@
-ALL = title_screen_uncompressed.prg title_screen_umc.prg title_screen_zx02.prg
+ALL = title_screen_uncompressed.prg title_screen_umc.prg title_screen_zx02.prg title_screen_ai.prg
 
 all: clean export_dir $(ALL)
 
@@ -21,7 +21,6 @@ zx02_data: bin_data ./data/zx02 ./data/make_zx02.py
 	./data/zx02 ./data/char_map.bin ./data/char_map.zx02
 	./data/zx02 ./data/color_map.bin ./data/color_map.zx02
 	python ./data/make_zx02.py ./data
-
 
 ai_data: bin_data
 	python ./data/ai_compressor.py ./data/char_map.bin ./data/char_set.bin ./data/color_map.bin ./data/
