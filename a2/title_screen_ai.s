@@ -1,4 +1,4 @@
-; title_screen_ai.s
+; ai generated title screen
 ;
 ; displaying the title screen, code produced with the help of AI
 ; game name: BIMGUS WARS

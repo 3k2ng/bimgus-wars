@@ -1,3 +1,4 @@
+# convert .bin files into assembly source code
 import sys
 
 data_dir = sys.argv[1]

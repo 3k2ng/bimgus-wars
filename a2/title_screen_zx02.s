@@ -1,3 +1,12 @@
+; zx02 compression for title screen
+; the original source is at https://github.com/dmsc/zx02/blob/main/6502/zx02-optim.asm
+;
+; displaying the title screen
+; game name: BIMGUS WARS
+; team name: UR MOM
+; year: 2024
+; title picture: 1 green tank facing 3 red tank
+
 ; De-compressor for ZX02 files
 ; ----------------------------
 ;

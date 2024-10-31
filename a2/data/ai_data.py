@@ -1,3 +1,4 @@
+# convert ai compressed .bin files into assembly source code
 import sys
 
 # Ensure there are 4 arguments: script name + 3 bin files + output directory
@@ -11,10 +12,12 @@ char_map_file = sys.argv[2]
 color_map_file = sys.argv[3]
 data_dir = sys.argv[4]
 
+
 # Helper function to read binary data from files
 def read_bin_file(file_path):
     with open(file_path, "rb") as f:
         return f.read()
+
 
 # Read binary data from the input files
 char_set = read_bin_file(char_set_file)

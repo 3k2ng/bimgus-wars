@@ -1,3 +1,4 @@
+# umc compressing script
 import sys
 
 # custom compression

@@ -39,7 +39,7 @@ title_screen_ai.prg: title_screen_ai.s  ai_data ./data/rle_data.s
 	dasm $< -oexport/_$@ -lexport/$(<:.s=.lst)
 
 clean_data:
-	rm -rf ./data/*.s ./data/*.bin ./data/*.zx02
+	rm -rf ./data/*.s ./data/*.bin ./data/*.umc ./data/*.zx02
 
 clean: clean_data
 	rm -rf ./export

@@ -1,3 +1,4 @@
+# title binary files generation script the source is ./data/title_image.png combined with some hard-coded data
 import sys
 import imageio.v3 as iio
 import numpy as np
