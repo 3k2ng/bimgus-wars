@@ -82,16 +82,16 @@ inf_loop
 ; RLE decoding subroutine
 decode_rle
         ldy #0
-.decode_loop
+decode_loop
         ; Get the value
         lda (SRC_PTR),y
         sta VALUE
         
         ; Move to next byte
         inc SRC_PTR
-        bne .skip1
+        bne skip_inc1
         inc SRC_PTR+1
-.skip1
+skip_inc1
 
         ; Get the count
         lda (SRC_PTR),y
@@ -99,34 +99,46 @@ decode_rle
         
         ; Move to next byte
         inc SRC_PTR
-        bne .skip2
+        bne skip_inc2
         inc SRC_PTR+1
-.skip2
+skip_inc2
 
-        ; Check if we're done (count = $7f)
+        ; Check if we're done (count = $7F)
         lda COUNT
-        cmp #$7f
-        beq .done
+        cmp #$7F
+        beq process_end
 
         ; Write the value COUNT times
         ldx COUNT
-.write_loop
+write_loop
         lda VALUE
         ldy #0
         sta (DEST_PTR),y
         
         ; Increment destination
         inc DEST_PTR
-        bne .skip3
+        bne skip_inc3
         inc DEST_PTR+1
-.skip3
+skip_inc3
         
         dex
-        bne .write_loop
+        bne write_loop
         
-        jmp .decode_loop
+        jmp decode_loop
 
-.done
+process_end
+        ; Handle the case when COUNT is $7F
+        lda #$00       ; Optionally reset VALUE for clarity
+        sta VALUE      ; Set VALUE to zero to indicate end
+
+        ; Move to the next byte for additional processing if needed
+        inc SRC_PTR
+        lda (SRC_PTR),y  ; Check the next byte
+        
+        ; Optionally, handle the end case logic here (e.g., stopping)
+        jmp decode_done
+
+decode_done
         rts
 
         ;include "./data/hcc_data.s"

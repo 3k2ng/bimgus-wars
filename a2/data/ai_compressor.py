@@ -21,11 +21,40 @@ def rle_compress(data):
 
     return compressed
 
+import struct
+
 def write_rle_to_bin(compressed, output_file):
     """Write compressed RLE data to a .bin file."""
     with open(output_file, 'wb') as f:
         for value, count in compressed:
-            f.write(struct.pack('BB', value, count))
+            if count == 0x7F:
+                # If count is exactly 0x7F, write (value, count - 1) and (value, 1)
+                f.write(struct.pack('BB', value, count - 1))
+                f.write(struct.pack('BB', value, 1))
+            elif count > 0x7F:
+                # If count is greater than 0x7F, handle splitting
+                var = count // 0x7F  # Calculate how many full 0x7F counts we have
+                remainder = count % 0x7F  # Calculate any remaining count
+
+                # Write full 0x7F counts
+                for _ in range(var):
+                    
+                    # original code
+                    # f.write(struct.pack('BB', value, 0x7F))
+                    # Manually updated code to handle base case in the decoder
+                    f.write(struct.pack('BB', value, 0x7E))
+                    f.write(struct.pack('BB', value, 0x01))
+                
+                # Write the remaining count, if any
+                if remainder > 0:
+                    f.write(struct.pack('BB', value, remainder))
+            else:
+                # For counts less than 0x7F, just write the value and count
+                f.write(struct.pack('BB', value, count))
+
+        # Only add terminator sequence after all data has been written
+        f.write(struct.pack('BB', 0, 0x7F))  # Value doesn't matter, count of 0x7F signals end
+
 
 def process_file(input_file, output_file):
     """Compress the input file using RLE and save it to output_file."""
