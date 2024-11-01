@@ -56,10 +56,10 @@ start
 ; copy custom character to character ram
         ldx #0
 ccr_loop
-        lda tank_char,X
+        lda tank_char_data,X
         sta CHARACTER_RAM,X
         inx
-        cpx #8*16
+        cpx #tank_char_data_end-tank_char_data
         bne ccr_loop
 
         ; initiate variables
@@ -195,7 +195,7 @@ x_loop
         ; rotation also represent the correct char to draw
         lda ROT
         asl
-        adc ROT
+        asl
         ; put map data on screen
         ldy X_VAR
         sta (SCREEN_RAM_VAR),y
@@ -224,5 +224,6 @@ skip_tank
 finish_update
         jmp inf_loop
 
-tank_char
-        include "./chars/tank.s"
+tank_char_data
+        include "./data/tank_char_data.s"
+tank_char_data_end
