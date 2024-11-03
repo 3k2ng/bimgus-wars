@@ -21,8 +21,12 @@ start
         lda #$0b
         sta $900f
 
+        jsr display_title_screen
+
         jsr main_game_loop
 
         rts
+
+        include "./title_screen_zx02.s"
 
         include "./main_game_loop.s"
