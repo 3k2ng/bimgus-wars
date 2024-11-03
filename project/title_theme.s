@@ -17,8 +17,14 @@ playsong
 ; main loop
 loop
         ; check if we need to exit
-        jsr read_input
+        lda CURRENT_KEY
+        cmp LAST_KEY
+        sta LAST_KEY
+        beq skip_print ; repeated input
+
+        cmp #SPACE_KEY_CODE
         beq endsong
+skip_print
         ; play note
         lda songb,X             ; get the current bass note
         sta SB                  ; write the note to the bass speaker
@@ -69,5 +75,3 @@ duration
         dc  10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10
         dc  10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10
         dc  0
-
-        include "read_inputs.s"
