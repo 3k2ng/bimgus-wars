@@ -34,10 +34,10 @@ skip_print
         sta SS                  ; write the note to the soprano speaker
 ; check if we should exit on this note
         lda duration,X          ; load accumulator with duration of current note
-        cmp #0                  ; compare accumulator with 0
         beq restartloop         ; if duration is 0, exit the main loop
 ; we should not exit on this note
         lda duration,X          ; load accumulator with duration of current note, again (?)
+        clc
         adc JC                  ; accumulator now stores the desired end time
 ; wait until jiffy clock equals the value in the accumulator (in this way, polyphony is impossible ;-;)
 inner
