@@ -62,27 +62,27 @@ def flip_card(sprite_in, n_axis):
     return flipped
 
 
-tank_sprites = []
+sprites = []
 
 for i in range(4):
     if i == 0:
-        tank_sprites += [tank_n]
-        tank_sprites += make_ib(tank_n, True)
-        tank_sprites += [tank_nw]
+        sprites += [tank_n]
+        sprites += make_ib(tank_n, True)
+        sprites += [tank_nw]
     elif i % 2 == 0:
-        tank_sprites += [flip_diag(tank_sprites[4 * i - 4], False)]
-        tank_sprites += make_ib(tank_sprites[4 * i], True)
-        tank_sprites += [flip_card(tank_sprites[4 * i - 1], True)]
+        sprites += [flip_diag(sprites[4 * i - 4], False)]
+        sprites += make_ib(sprites[4 * i], True)
+        sprites += [flip_card(sprites[4 * i - 1], True)]
     else:
-        tank_sprites += [flip_diag(tank_sprites[4 * i - 4], True)]
-        tank_sprites += make_ib(tank_sprites[4 * i], False)
-        tank_sprites += [flip_card(tank_sprites[4 * i - 1], False)]
+        sprites += [flip_diag(sprites[4 * i - 4], True)]
+        sprites += make_ib(sprites[4 * i], False)
+        sprites += [flip_card(sprites[4 * i - 1], False)]
 
 
 data_path = sys.argv[1]
 
-with open(f"{data_path}/tank_char_data.s", "w") as f:
-    for s in tank_sprites:
+with open(f"{data_path}/sprite_data.s", "w") as f:
+    for s in sprites:
         char_bytes = [
             int(
                 "".join(

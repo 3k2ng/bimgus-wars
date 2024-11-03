@@ -1,15 +1,15 @@
-ALL = bimgus_game.prg
+ALL = ./export/_bimgus_game.prg
 
-all: clean export_dir $(ALL)
+all: $(ALL)
 
-export_dir:
+./data/sprite_data.s: ./data/make_sprite.py
+	python ./data/make_sprite.py ./data
+
+./export/_bimgus_game.prg: ./bimgus_game.s ./main_game_loop.s ./data/sprite_data.s
+	rm -rf export
 	mkdir export
-
-tank_data: ./data/make_tank.py
-	python ./data/make_tank.py ./data
-
-bimgus_game.prg: ./bimgus_game.s tank_data
-	dasm $< -oexport/_$@ -lexport/$(<:.s=.lst)
+	dasm $< -o$@ -lexport/$(<:.s=.lst)
 
 clean:
+	rm -rf ./data/*.s
 	rm -rf export
