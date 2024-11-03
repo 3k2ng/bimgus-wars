@@ -55,14 +55,6 @@ LEFT_RIGHT_KEY_CODE = $17
 
 ; main
 display_title_screen
-; set character location to character ram
-        lda #$ff
-        sta $9005
-
-; set screen and border color
-        lda #$0b
-        sta $900f
-
 ; call the subroutine three times
         ; char set
         jsr full_decomp
