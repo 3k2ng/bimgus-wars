@@ -21,6 +21,7 @@
 
 	processor 6502
 
+; Info pertaining to ZX02
 ZP=$80
 
 offset  equ ZP+0
@@ -29,7 +30,7 @@ ZX0_dst equ ZP+4
 bitr    equ ZP+6
 pntr    equ ZP+7
 
-
+; Info pertaining to writing to screen
 CHARACTER_RAM = $1c00
 ; character_ram split into 2 bytes
 CHRB0 = $00
@@ -44,6 +45,16 @@ COLOR_RAM = $9600
 ; color_ram split into 2 bytes
 CORB0 = $00
 CORB1 = $96
+
+; Info pertaining to input reading
+CHROUT = $ffd2
+
+LAST_KEY = 64
+CURRENT_KEY = $c5
+
+SPACE_KEY_CODE = $20
+UP_DOWN_KEY_CODE = $1f
+LEFT_RIGHT_KEY_CODE = $17
 
 	org $1001
 
@@ -89,7 +100,9 @@ start
         jsr full_decomp
 
         ; Play title theme
-        include "title_theme.s"
+        jsr playsong
+
+        rts
 
 
         ; Initial values for offset, source, destination and bitr
@@ -229,3 +242,5 @@ exit
         rts
 
         include "zx02_data.s"
+        
+        include "title_theme.s"

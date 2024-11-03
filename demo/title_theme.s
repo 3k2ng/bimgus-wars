@@ -10,11 +10,16 @@ SN      = $900d                 ; noise
 SV      = $900e                 ; volume
 JC      = $00a2                 ; jiffy clock
 ; assembly program
+playsong
         lda #9                  ; load accumulator with desired volume
         sta SV                  ; set speakers to that volume
         ldx #0                  ; store the offset in X register
 ; main loop
 loop
+        ; check if we need to exit
+        jsr read_input
+        beq endsong
+        ; play note
         lda songb,X             ; get the current bass note
         sta SB                  ; write the note to the bass speaker
         lda songa,X             ; get the current alto note
@@ -24,7 +29,7 @@ loop
 ; check if we should exit on this note
         lda duration,X          ; load accumulator with duration of current note
         cmp #0                  ; compare accumulator with 0
-        beq exitt               ; if duration is 0, exit the main loop
+        beq restartloop         ; if duration is 0, exit the main loop
 ; we should not exit on this note
         lda duration,X          ; load accumulator with duration of current note, again (?)
         adc JC                  ; accumulator now stores the desired end time
@@ -36,9 +41,10 @@ inner
         inx                     ; increment the note offset (X register)
         jmp loop                ; restart main loop
 ; cleanup
-exitt
+restartloop
         ldx #$20
         jmp loop
+endsong
         lda #0                  ; shut off the speaker!
         sta SV
         rts
@@ -63,6 +69,8 @@ duration
         dc  10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10
         dc  10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10
         dc  0
+
+        include "read_inputs.s"
 
         if . >= $1e00
         echo "ERROR: tromping on screen memory!"
