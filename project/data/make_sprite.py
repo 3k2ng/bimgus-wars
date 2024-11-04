@@ -24,6 +24,60 @@ tank_nw = """\
 ..##....\
 """
 
+walls = [
+    """\
+........\
+........\
+........\
+........\
+........\
+........\
+........\
+........\
+""",
+    """\
+.#######\
+.#######\
+.#######\
+........\
+####.###\
+####.###\
+####.###\
+........\
+""",
+    """\
+.###.##.\
+####.###\
+.#####..\
+#.###.##\
+########\
+###.##.#\
+##.###..\
+.#.####.\
+""",
+    """\
+..#.#.#.\
+.#.#.#.#\
+#.#.#.#.\
+.#.#.#.#\
+#.#.#.#.\
+.#.#.#.#\
+#.#.#.#.\
+.#.#.#..\
+""",
+]
+
+shot = """\
+........\
+...##...\
+..####..\
+.######.\
+.######.\
+..####..\
+...##...\
+........\
+"""
+
 IB_UP = 0
 IB_RIGHT = 1
 IB_DOWN = 2
@@ -75,20 +129,31 @@ def flip_card(sprite_in, n_axis):
 
 sprites = []
 
+sprites += walls
+
+tank_offset = len(sprites)
 for i in range(4):
     if i == 0:
         sprites += [tank_n]
         sprites += make_ib(tank_n, i)
         sprites += [tank_nw]
     elif i % 2 == 0:
-        sprites += [flip_diag(sprites[4 * i - 4], False)]
-        sprites += make_ib(sprites[4 * i], i)
-        sprites += [flip_card(sprites[4 * i - 1], True)]
+        sprites += [flip_diag(sprites[tank_offset + 4 * i - 4], False)]
+        sprites += make_ib(sprites[tank_offset + 4 * i], i)
+        sprites += [flip_card(sprites[tank_offset + 4 * i - 1], True)]
     else:
-        sprites += [flip_diag(sprites[4 * i - 4], True)]
-        sprites += make_ib(sprites[4 * i], i)
-        sprites += [flip_card(sprites[4 * i - 1], False)]
+        sprites += [flip_diag(sprites[tank_offset + 4 * i - 4], True)]
+        sprites += make_ib(sprites[tank_offset + 4 * i], i)
+        sprites += [flip_card(sprites[tank_offset + 4 * i - 1], False)]
 
+sprites += [shot]
+sprites += make_ib(shot, IB_DOWN)
+sprites += make_ib(shot, IB_LEFT)
+
+# for s in sprites:
+#     for l in [s[8 * i : 8 * (i + 1)] for i in range(8)]:
+#         print(l)
+#     print()
 
 data_path = sys.argv[1]
 
