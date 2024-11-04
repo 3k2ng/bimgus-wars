@@ -27,6 +27,7 @@ ZX0_src equ ZP+2
 ZX0_dst equ ZP+4
 bitr    equ ZP+6
 pntr    equ ZP+7
+ini     equ ZP+9
 
 ; Info pertaining to writing to screen
 CHARACTER_RAM = $1c00
@@ -54,29 +55,25 @@ UP_DOWN_KEY_CODE = $1f
 LEFT_RIGHT_KEY_CODE = $17
 
 ; main
-display_title_screen
+decompress_all
 ; call the subroutine three times
         ; char set
+        lda #<zx0_ini_block_char_set
+        sta ini
+        lda #>zx0_ini_block_char_set
+        sta ini+1
         jsr full_decomp
         ; char map
-        lda zx0_ini_block_char_map
-        sta zx0_ini_block+2
-        lda zx0_ini_block_char_map+1
-        sta zx0_ini_block+3
-        lda zx0_ini_block_char_map+2
-        sta zx0_ini_block+4
-        lda zx0_ini_block_char_map+3
-        sta zx0_ini_block+5
+        lda #<zx0_ini_block_char_map
+        sta ini
+        lda #>zx0_ini_block_char_map
+        sta ini+1
         jsr full_decomp
         ; color map
-        lda zx0_ini_block_color_map
-        sta zx0_ini_block+2
-        lda zx0_ini_block_color_map+1
-        sta zx0_ini_block+3
-        lda zx0_ini_block_color_map+2
-        sta zx0_ini_block+4
-        lda zx0_ini_block_color_map+3
-        sta zx0_ini_block+5
+        lda #<zx0_ini_block_color_map
+        sta ini
+        lda #>zx0_ini_block_color_map
+        sta ini+1
         jsr full_decomp
 
         ; Title screen has finished drawing
@@ -84,19 +81,19 @@ display_title_screen
 
 
         ; Initial values for offset, source, destination and bitr
-zx0_ini_block
+zx0_ini_block_char_set
         ; dc.b $00, $00, <comp_data, >comp_data, <out_addr, >out_addr, $80
         dc.b $00, $00
         dc.w zx02_char_set, CHARACTER_RAM
         dc.b $80
-; zx0_ini_block_char_set
-;         dc.b $00, $00
-;         dc.w zx02_char_set, CHARACTER_RAM
-;         dc.b $80
 zx0_ini_block_char_map
+        dc.b $00, $00
         dc.w zx02_char_map, SCREEN_RAM
+        dc.b $80
 zx0_ini_block_color_map
+        dc.b $00, $00
         dc.w zx02_color_map, COLOR_RAM
+        dc.b $80
 
 ;--------------------------------------------------
 ; Decompress ZX0 data (6502 optimized format)
@@ -106,11 +103,12 @@ full_decomp
         ldy #7
 
 copy_init
-        lda zx0_ini_block-1,Y
-        sta offset-1,Y
         dey
+        lda (ini),Y ; JCH
+        sta offset,Y
+        cpy #0
         bne copy_init
-        
+
 ; Decode literal: Ccopy next N bytes from compressed file
 ;    Elias(length)  byte[1]  byte[2]  ...  byte[N]
 decode_literal

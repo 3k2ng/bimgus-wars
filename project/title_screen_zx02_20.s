@@ -51,7 +51,7 @@ CHROUT = $ffd2
 CURRENT_KEY = $c5
 
 ; main
-display_title_screen
+decompress_all
 ; call the subroutine three times
         ; char set
         ldy #7

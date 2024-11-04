@@ -22,7 +22,7 @@ start
         sta $900f
 
         ; Display title screen
-        jsr display_title_screen
+        jsr decompress_all
 
         ; Play title theme
         jsr playsong
@@ -31,7 +31,7 @@ start
         jsr main_game_loop
 
         ; Display title screen again
-        jsr display_title_screen
+        jsr decompress_all
 
         rts
 
