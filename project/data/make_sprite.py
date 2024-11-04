@@ -24,18 +24,29 @@ tank_nw = """\
 ..##....\
 """
 
+IB_UP = 0
+IB_RIGHT = 1
+IB_DOWN = 2
+IB_LEFT = 3
 
-def make_ib(sprite_in, is_vertical):
-    if is_vertical:
+
+def make_ib(sprite_in, ib_direction):
+    if ib_direction % 2 == 0:
         upper = "." * 32 + sprite_in[:32]
         lower = sprite_in[32:] + "." * 32
-        return [upper, lower]
+        if ib_direction == IB_UP:
+            return [lower, upper]
+        else:
+            return [upper, lower]
     else:
         left = "".join(["." * 4 + sprite_in[8 * i : 8 * i + 4] for i in range(8)])
         right = "".join(
             [sprite_in[8 * i + 4 : 8 * (i + 1)] + "." * 4 for i in range(8)]
         )
-        return [left, right]
+        if ib_direction == IB_RIGHT:
+            return [right, left]
+        else:
+            return [left, right]
 
 
 def flip_diag(sprite_in, nw_axis):
@@ -67,15 +78,15 @@ sprites = []
 for i in range(4):
     if i == 0:
         sprites += [tank_n]
-        sprites += make_ib(tank_n, True)
+        sprites += make_ib(tank_n, i)
         sprites += [tank_nw]
     elif i % 2 == 0:
         sprites += [flip_diag(sprites[4 * i - 4], False)]
-        sprites += make_ib(sprites[4 * i], True)
+        sprites += make_ib(sprites[4 * i], i)
         sprites += [flip_card(sprites[4 * i - 1], True)]
     else:
         sprites += [flip_diag(sprites[4 * i - 4], True)]
-        sprites += make_ib(sprites[4 * i], False)
+        sprites += make_ib(sprites[4 * i], i)
         sprites += [flip_card(sprites[4 * i - 1], False)]
 
 
