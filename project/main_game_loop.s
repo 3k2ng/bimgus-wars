@@ -11,6 +11,7 @@ COLOR_RAM = $9600
 COLOR_RAM_END = $9800
 
 ; keycode
+SPACE_KEY_CODE = $20
 UP_DOWN_KEY_CODE = $1f
 LEFT_RIGHT_KEY_CODE = $17
 
@@ -110,12 +111,17 @@ check_key
         lda PLAYER_STATE_BITS
         cpx #UP_DOWN_KEY_CODE
         bne not_up_down
-        ora #1
+        ora #1 ; begin moving forward
 not_up_down
         cpx #LEFT_RIGHT_KEY_CODE
         bne not_left_right
-        ora #2
+        ora #2 ; begin rotating
 not_left_right
+        cpx #SPACE_KEY_CODE
+        bne not_anything
+        ;;; shoot i guess
+        rts
+not_anything
         sta PLAYER_STATE_BITS
         jmp draw_update
 
@@ -310,3 +316,5 @@ game_loc_to_ram
 sprite_data
         include "./data/sprite_data.s"
 sprite_data_end
+
+        ; include "./game_theme.s"

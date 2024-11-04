@@ -30,6 +30,9 @@ start
         ; Enter game
         jsr main_game_loop
 
+        ; Display title screen again
+        jsr display_title_screen
+
         rts
 
         include "./title_screen_zx02.s"
