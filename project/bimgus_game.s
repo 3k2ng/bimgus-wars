@@ -21,12 +21,24 @@ start
         lda #$0b
         sta $900f
 
+        ; Display title screen
         jsr display_title_screen
 
+        ; Play title theme
+        jsr playsong
+
+        ; Enter game
         jsr main_game_loop
 
         rts
 
         include "./title_screen_zx02.s"
 
+        include "./title_theme.s"
+
         include "./main_game_loop.s"
+
+        if . >= $1e00
+        echo "ERROR: tromping on screen memory!"
+        err
+        endif

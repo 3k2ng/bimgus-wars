@@ -57,30 +57,26 @@ LEFT_RIGHT_KEY_CODE = $17
 display_title_screen
 ; call the subroutine three times
         ; char set
-        ldy #7
-copy_init1
-        lda zx0_ini_block_char_set-1,Y
-        sta offset-1,Y
-        dey
-        bne copy_init1
         jsr full_decomp
-
         ; char map
-        ldy #7
-copy_init2
-        lda zx0_ini_block_char_map-1,Y
-        sta offset-1,Y
-        dey
-        bne copy_init2
+        lda zx0_ini_block_char_map
+        sta zx0_ini_block+2
+        lda zx0_ini_block_char_map+1
+        sta zx0_ini_block+3
+        lda zx0_ini_block_char_map+2
+        sta zx0_ini_block+4
+        lda zx0_ini_block_char_map+3
+        sta zx0_ini_block+5
         jsr full_decomp
-
         ; color map
-        ldy #7
-copy_init3
-        lda zx0_ini_block_color_map-1,Y
-        sta offset-1,Y
-        dey
-        bne copy_init3
+        lda zx0_ini_block_color_map
+        sta zx0_ini_block+2
+        lda zx0_ini_block_color_map+1
+        sta zx0_ini_block+3
+        lda zx0_ini_block_color_map+2
+        sta zx0_ini_block+4
+        lda zx0_ini_block_color_map+3
+        sta zx0_ini_block+5
         jsr full_decomp
 
         ; Title screen has finished drawing
@@ -88,24 +84,33 @@ copy_init3
 
 
         ; Initial values for offset, source, destination and bitr
-zx0_ini_block_char_set
+zx0_ini_block
         ; dc.b $00, $00, <comp_data, >comp_data, <out_addr, >out_addr, $80
         dc.b $00, $00
         dc.w zx02_char_set, CHARACTER_RAM
         dc.b $80
+; zx0_ini_block_char_set
+;         dc.b $00, $00
+;         dc.w zx02_char_set, CHARACTER_RAM
+;         dc.b $80
 zx0_ini_block_char_map
-        dc.b $00, $00
         dc.w zx02_char_map, SCREEN_RAM
-        dc.b $80
 zx0_ini_block_color_map
-        dc.b $00, $00
         dc.w zx02_color_map, COLOR_RAM
-        dc.b $80
 
 ;--------------------------------------------------
 ; Decompress ZX0 data (6502 optimized format)
 
 full_decomp
+        ; Get initialization block
+        ldy #7
+
+copy_init
+        lda zx0_ini_block-1,Y
+        sta offset-1,Y
+        dey
+        bne copy_init
+        
 ; Decode literal: Ccopy next N bytes from compressed file
 ;    Elias(length)  byte[1]  byte[2]  ...  byte[N]
 decode_literal
