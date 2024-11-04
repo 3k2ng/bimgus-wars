@@ -16,7 +16,11 @@ UP_DOWN_KEY_CODE = $1f
 LEFT_RIGHT_KEY_CODE = $17
 
 ; screen code
-SPACE_SCREEN_CODE = $e0
+SPACE_SCREEN_CODE = $00
+WALL_SCREEN_CODE = $01
+CRACK_SCREEN_CODE = $02
+BUSH_SCREEN_CODE = $03
+TANK_SCREEN_CODE_UP = $04
 
 ; color code
 BLACK_COLOR_CODE = 0
@@ -57,31 +61,31 @@ load_sprite_loop
         dex
         bne load_sprite_loop
 
-        lda #<SCREEN_RAM
-        sta SCREEN_RAM_PTR
-        lda #>SCREEN_RAM
-        sta SCREEN_RAM_PTR+1
-        lda #<COLOR_RAM
-        sta COLOR_RAM_PTR
-        lda #>COLOR_RAM
-        sta COLOR_RAM_PTR+1
-clear_screen_loop
-        ldy #0
-        lda #SPACE_SCREEN_CODE
-        sta (SCREEN_RAM_PTR),y
-        lda #BLACK_COLOR_CODE
-        sta (COLOR_RAM_PTR),y
-        inc SCREEN_RAM_PTR
-        inc COLOR_RAM_PTR
-        bne mgsc0
-        inc SCREEN_RAM_PTR+1
-        inc COLOR_RAM_PTR+1
-        ldx SCREEN_RAM_PTR+1
-        cpx #>SCREEN_RAM_END
-        beq done_clear_screen
-mgsc0
-        jmp clear_screen_loop
-done_clear_screen
+;        lda #<SCREEN_RAM
+;        sta SCREEN_RAM_PTR
+;        lda #>SCREEN_RAM
+;        sta SCREEN_RAM_PTR+1
+;        lda #<COLOR_RAM
+;        sta COLOR_RAM_PTR
+;        lda #>COLOR_RAM
+;        sta COLOR_RAM_PTR+1
+;clear_screen_loop
+;        ldy #0
+;        lda #SPACE_SCREEN_CODE
+;        sta (SCREEN_RAM_PTR),y
+;        lda #BLACK_COLOR_CODE
+;        sta (COLOR_RAM_PTR),y
+;        inc SCREEN_RAM_PTR
+;        inc COLOR_RAM_PTR
+;        bne mgsc0
+;        inc SCREEN_RAM_PTR+1
+;        inc COLOR_RAM_PTR+1
+;        ldx SCREEN_RAM_PTR+1
+;        cpx #>SCREEN_RAM_END
+;        beq done_clear_screen
+;mgsc0
+;        jmp clear_screen_loop
+;done_clear_screen
 
         lda #0
         sta PLAYER_LOCATION_X
@@ -203,6 +207,8 @@ draw_tank_sr
         lda (GAME_LOC_PTR),y ; y = 2 -> game_loc_rotation
         asl
         asl
+        clc
+        adc #TANK_SCREEN_CODE_UP
         sta TANK_SCREEN_CODE
         ldy #3
         lda (GAME_LOC_PTR),y ; y = 3 -> game_loc_state_bits
@@ -210,12 +216,14 @@ draw_tank_sr
         lsr
         beq .moving
         ; else .rotating
+
 .rotating
         clc
         lda TANK_SCREEN_CODE
         adc #3
         sta TANK_SCREEN_CODE
         jmp .normal
+
 .moving
         ldy #0
         inc TANK_SCREEN_CODE
@@ -237,6 +245,7 @@ draw_tank_sr
         beq .left
         dex
         beq .down
+
 .right
         inc TANK_HEAD_X
         jmp .clamp_loc
@@ -249,6 +258,7 @@ draw_tank_sr
 .down
         inc TANK_HEAD_Y
         jmp .clamp_loc
+
 .clamp_loc
         lda TANK_HEAD_X
         and #15
@@ -262,6 +272,7 @@ draw_tank_sr
         lda #>TANK_HEAD_X
         sta GAME_LOC_PTR+1
         jsr game_loc_to_ram
+
 .normal
         ldy #0
         lda TANK_SCREEN_CODE
@@ -293,6 +304,7 @@ game_loc_to_ram
         lda (GAME_LOC_PTR),y ; y = 1 -> game_loc_y
         beq .skip_y_loop ; if game_loc_y == 0
         tax
+
 .y_loop
         clc
         lda SCREEN_RAM_PTR
