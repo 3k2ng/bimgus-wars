@@ -27,7 +27,7 @@ ZX0_src equ ZP+2
 ZX0_dst equ ZP+4
 bitr    equ ZP+6
 pntr    equ ZP+7
-ini     equ ZP+9
+
 
 ; Info pertaining to writing to screen
 CHARACTER_RAM = $1c00
@@ -58,22 +58,30 @@ LEFT_RIGHT_KEY_CODE = $17
 display_title_screen
 ; call the subroutine three times
         ; char set
-        lda <zx0_ini_block_char_set
-        sta ini
-        lda >zx0_ini_block_char_set
-        sta ini+1
+        ldy #7
+copy_init1
+        lda zx0_ini_block_char_set-1,Y
+        sta offset-1,Y
+        dey
+        bne copy_init1
         jsr full_decomp
+
         ; char map
-        lda <zx0_ini_block_char_map
-        sta ini
-        lda >zx0_ini_block_char_map
-        sta ini+1
+        ldy #7
+copy_init2
+        lda zx0_ini_block_char_map-1,Y
+        sta offset-1,Y
+        dey
+        bne copy_init2
         jsr full_decomp
+
         ; color map
-        lda <zx0_ini_block_color_map
-        sta ini
-        lda >zx0_ini_block_color_map
-        sta ini+1
+        ldy #7
+copy_init3
+        lda zx0_ini_block_color_map-1,Y
+        sta offset-1,Y
+        dey
+        bne copy_init3
         jsr full_decomp
 
         ; Title screen has finished drawing
@@ -99,15 +107,6 @@ zx0_ini_block_color_map
 ; Decompress ZX0 data (6502 optimized format)
 
 full_decomp
-        ; Get initialization block
-        ldy #7
-
-copy_init
-        lda (ini),Y ; JCH
-        sta offset-1,Y
-        dey
-        bne copy_init
-
 ; Decode literal: Ccopy next N bytes from compressed file
 ;    Elias(length)  byte[1]  byte[2]  ...  byte[N]
 decode_literal
