@@ -185,7 +185,8 @@ not_left_right
         cpx #SPACE_KEY_CODE
         bne not_anything
         ;;; shoot i guess
-        rts
+        jsr sfx_bullet
+        ; rts
 not_anything
         sta PLAYER_STATE_BITS
         jmp draw_update
@@ -393,3 +394,5 @@ sprite_data_end
 level_data
         include "./data/level_data.s"
 level_data_end
+
+        include "./sound_effects.s"

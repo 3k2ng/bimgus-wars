@@ -21,7 +21,6 @@ start
         lda #$0b
         sta $900f
 
-the_beginning
         ; Display title screen
         jsr decompress_all
 
@@ -32,7 +31,7 @@ the_beginning
         jsr main_game_loop
 
         ; Display title screen again
-        jmp the_beginning
+        jmp start
 
         rts
 
