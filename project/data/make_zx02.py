@@ -1,6 +1,6 @@
 import subprocess
 
-with open("./data/zx02_data.s", "w") as f:
+with open("./data/title_zx02.s", "w") as f:
     with open("./data/bin_list.bin", "r") as bin_list:
         for line in bin_list:
             line = line.strip()
