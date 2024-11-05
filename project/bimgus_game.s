@@ -13,11 +13,11 @@ nextstmt
 ; main
 start
 
-; set character location to character ram
+; set character location to character ram (TODO: get rid of magic numbers!)
         lda #$ff
         sta $9005
 
-; set screen and border color
+; set screen and border color (TODO: get rid of magic numbers!)
         lda #$0b
         sta $900f
 

@@ -10,6 +10,8 @@ bin_data: ./data/make_bin.py
 
 zx02_data: bin_data ./data/zx02 ./data/make_zx02.py
 	python ./data/make_zx02.py
+	rm -rf ./data/*.bin
+	rm -rf ./data/*.zx02
 
 ./export/_bimgus_game.prg: ./bimgus_game.s ./main_game_loop.s ./data/sprite_data.s zx02_data
 
@@ -24,4 +26,5 @@ zx02_data: bin_data ./data/zx02 ./data/make_zx02.py
 clean:
 	rm -rf ./data/*.s
 	rm -rf ./data/*.bin
+	rm -rf ./data/*.zx02
 	rm -rf export
