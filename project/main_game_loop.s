@@ -51,7 +51,6 @@ PLAYER_STATE_BITS
         ds.b 1 ; %0000 00rm
 
 main_game_loop
-mgl_start
 
         ldx #sprite_data_end-sprite_data
 load_sprite_loop
@@ -60,32 +59,35 @@ load_sprite_loop
         dex
         bne load_sprite_loop
 
-;        lda #<SCREEN_RAM
-;        sta SCREEN_RAM_PTR
-;        lda #>SCREEN_RAM
-;        sta SCREEN_RAM_PTR+1
-;        lda #<COLOR_RAM
-;        sta COLOR_RAM_PTR
-;        lda #>COLOR_RAM
-;        sta COLOR_RAM_PTR+1
-;clear_screen_loop
-;        ldy #0
-;        lda #SPACE_SCREEN_CODE
-;        sta (SCREEN_RAM_PTR),y
-;        lda #BLACK_COLOR_CODE
-;        sta (COLOR_RAM_PTR),y
-;        inc SCREEN_RAM_PTR
-;        inc COLOR_RAM_PTR
-;        bne mgsc0
-;        inc SCREEN_RAM_PTR+1
-;        inc COLOR_RAM_PTR+1
-;        ldx SCREEN_RAM_PTR+1
-;        cpx #>SCREEN_RAM_END
-;        beq done_clear_screen
-;mgsc0
-;        jmp clear_screen_loop
-;done_clear_screen
+        lda #<SCREEN_RAM
+        sta SCREEN_RAM_PTR
+        lda #>SCREEN_RAM
+        sta SCREEN_RAM_PTR+1
+        lda #<COLOR_RAM
+        sta COLOR_RAM_PTR
+        lda #>COLOR_RAM
+        sta COLOR_RAM_PTR+1
+clear_screen_loop
+        ldy #0
+        lda #SPACE_SCREEN_CODE
+        sta (SCREEN_RAM_PTR),y
+        lda #BLACK_COLOR_CODE
+        sta (COLOR_RAM_PTR),y
+        inc SCREEN_RAM_PTR
+        bne mgsc0
+        inc SCREEN_RAM_PTR+1
+mgsc0
+        inc COLOR_RAM_PTR
+        bne mgsc1
+        inc COLOR_RAM_PTR+1
+mgsc1
+        lda SCREEN_RAM_PTR+1
+        cmp #>SCREEN_RAM_END
+        beq done_clear_screen
+        jmp clear_screen_loop
+done_clear_screen
 
+mgl_start
         lda #0
         sta PLAYER_LOCATION_X
         sta PLAYER_LOCATION_Y
