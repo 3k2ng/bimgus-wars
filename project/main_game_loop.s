@@ -1,7 +1,6 @@
 ; main game loop
 
 ; ram location
-JIFFY_CLOCK = $a2 ; the only byte that matters
 CURRENT_KEY = $c5
 
 CHARACTER_RAM = $1c00
@@ -101,9 +100,9 @@ mgl_start
         sta COLOR_RAM_PTR
         lda #>COLOR_RAM
         sta COLOR_RAM_PTR+1
-        ldx #0
+        ldx #15
 lv_x_loop
-        ldy #0
+        ldy #15
 lv_y_loop
         lda (LEVEL_DATA_PTR),y
         sta (SCREEN_RAM_PTR),y
@@ -111,9 +110,8 @@ lv_y_loop
         lda #WHITE_COLOR_CODE
         sta (COLOR_RAM_PTR),y
 skip_color
-        iny
-        cpy #16
-        bne lv_y_loop
+        dey
+        bpl lv_y_loop
 
         clc
         lda LEVEL_DATA_PTR
@@ -139,9 +137,8 @@ skip_color
         adc #0
         sta COLOR_RAM_PTR+1
 
-        inx
-        cpx #16
-        bne lv_x_loop
+        dex
+        bpl lv_x_loop
 
         ldy #0
         lda (LEVEL_DATA_PTR),y
