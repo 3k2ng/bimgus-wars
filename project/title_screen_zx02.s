@@ -28,6 +28,7 @@ ZX0_dst equ ZP+4
 bitr    equ ZP+6
 pntr    equ ZP+7
 ini     equ ZP+9
+index   equ ZP+11
 
 ; Info pertaining to writing to screen
 CHARACTER_RAM = $1c00
@@ -55,18 +56,18 @@ UP_DOWN_KEY_CODE = $1f
 LEFT_RIGHT_KEY_CODE = $17
 
 ; main
-decomp_index
-        dc.b 2
 decompress_all
+        lda #3
+        sta index
 ; Decompress the title screen
         ; char set
         lda #<zx0_ini_block_char_set
         sta ini
         lda #>zx0_ini_block_char_set
         sta ini+1
-        jsr full_decomp
-        ; char map, color map
         clc
+        jmp test7
+        ; char map, color map, etc.
 decomp_loop
         lda ini                 ; get the LSB of the ini pointer
         adc #7                  ; increment by 7
@@ -75,15 +76,15 @@ decomp_loop
         inc ini+1               ; increment the MSB of the pointer
 test7
         jsr full_decomp         ; call decompression subroutine
-        dec decomp_index        ; move on to the next ini block
+        dec index               ; move on to the next ini block
         bne decomp_loop         ; if 0, we are done
         ; all done!
         rts
 
 
         ; Initial values for offset, source, destination and bitr
-zx0_ini_block_char_set
         ; dc.b $00, $00, <comp_data, >comp_data, <out_addr, >out_addr, $80
+zx0_ini_block_char_set
         dc.b $00, $00
         dc.w zx02_char_set, CHARACTER_RAM
         dc.b $80
@@ -95,6 +96,7 @@ zx0_ini_block_color_map
         dc.b $00, $00
         dc.w zx02_color_map, COLOR_RAM
         dc.b $80
+
 
 ;--------------------------------------------------
 ; Decompress ZX0 data (6502 optimized format)
