@@ -9,6 +9,11 @@ all: clean $(ALL)
 	python ./data/make_bin.py
 
 ./export/_bimgus_game.prg: ./bimgus_game.s ./main_game_loop.s ./data/sprite_data.s ./data/title_alto.bin
+
+./data/level_data.s: ./data/make_level.py
+	python ./data/make_level.py ./data
+
+./export/_bimgus_game.prg: ./bimgus_game.s ./main_game_loop.s ./data/sprite_data.s ./data/level_data.s
 	rm -rf export
 	mkdir export
 	dasm $< -o$@ -lexport/$(<:.s=.lst)

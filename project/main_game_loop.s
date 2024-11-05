@@ -33,11 +33,12 @@ ROW_SIZE = 22
 GAME_SCREEN_OFFSET = 69
 
 ; zero page variables
-SCREEN_RAM_PTR = $00 ; 2 bytes
-COLOR_RAM_PTR = $02 ; 2 bytes
-GAME_LOC_PTR = $04 ; 2 bytes for game_loc_to_ram
-TANK_SCREEN_CODE = $06 ; 1 bytes for draw_tank_sr
-TANK_COLOR_CODE = $07 ; 1 bytes for draw_tank_sr
+LEVEL_DATA_PTR = $00 ; 2 bytes
+SCREEN_RAM_PTR = $02 ; 2 bytes
+COLOR_RAM_PTR = $04 ; 2 bytes
+GAME_LOC_PTR = $06 ; 2 bytes for game_loc_to_ram
+TANK_SCREEN_CODE = $08 ; 1 bytes for draw_tank_sr
+TANK_COLOR_CODE = $09 ; 1 bytes for draw_tank_sr
 
 ; local variables
 LAST_KEY
@@ -52,7 +53,10 @@ PLAYER_STATE_BITS
         ds.b 1 ; %0000 00rm
 
 main_game_loop
-mgl_start
+        lda #<level_data
+        sta LEVEL_DATA_PTR
+        lda #>level_data
+        sta LEVEL_DATA_PTR+1
 
         ldx #sprite_data_end-sprite_data
 load_sprite_loop
@@ -61,35 +65,93 @@ load_sprite_loop
         dex
         bne load_sprite_loop
 
-;        lda #<SCREEN_RAM
-;        sta SCREEN_RAM_PTR
-;        lda #>SCREEN_RAM
-;        sta SCREEN_RAM_PTR+1
-;        lda #<COLOR_RAM
-;        sta COLOR_RAM_PTR
-;        lda #>COLOR_RAM
-;        sta COLOR_RAM_PTR+1
-;clear_screen_loop
-;        ldy #0
-;        lda #SPACE_SCREEN_CODE
-;        sta (SCREEN_RAM_PTR),y
-;        lda #BLACK_COLOR_CODE
-;        sta (COLOR_RAM_PTR),y
-;        inc SCREEN_RAM_PTR
-;        inc COLOR_RAM_PTR
-;        bne mgsc0
-;        inc SCREEN_RAM_PTR+1
-;        inc COLOR_RAM_PTR+1
-;        ldx SCREEN_RAM_PTR+1
-;        cpx #>SCREEN_RAM_END
-;        beq done_clear_screen
-;mgsc0
-;        jmp clear_screen_loop
-;done_clear_screen
+        lda #<SCREEN_RAM
+        sta SCREEN_RAM_PTR
+        lda #>SCREEN_RAM
+        sta SCREEN_RAM_PTR+1
+        lda #<COLOR_RAM
+        sta COLOR_RAM_PTR
+        lda #>COLOR_RAM
+        sta COLOR_RAM_PTR+1
+clear_screen_loop
+        ldy #0
+        lda #SPACE_SCREEN_CODE
+        sta (SCREEN_RAM_PTR),y
+        lda #BLACK_COLOR_CODE
+        sta (COLOR_RAM_PTR),y
+        inc SCREEN_RAM_PTR
+        bne mgsc0
+        inc SCREEN_RAM_PTR+1
+mgsc0
+        inc COLOR_RAM_PTR
+        bne mgsc1
+        inc COLOR_RAM_PTR+1
+mgsc1
+        lda SCREEN_RAM_PTR+1
+        cmp #>SCREEN_RAM_END
+        beq done_clear_screen
+        jmp clear_screen_loop
+done_clear_screen
 
-        lda #0
+mgl_start
+        lda #<SCREEN_RAM+GAME_SCREEN_OFFSET
+        sta SCREEN_RAM_PTR
+        lda #>SCREEN_RAM
+        sta SCREEN_RAM_PTR+1
+        lda #<COLOR_RAM+GAME_SCREEN_OFFSET
+        sta COLOR_RAM_PTR
+        lda #>COLOR_RAM
+        sta COLOR_RAM_PTR+1
+        ldx #0
+lv_x_loop
+        ldy #0
+lv_y_loop
+        lda (LEVEL_DATA_PTR),y
+        sta (SCREEN_RAM_PTR),y
+        beq skip_color
+        lda #WHITE_COLOR_CODE
+        sta (COLOR_RAM_PTR),y
+skip_color
+        iny
+        cpy #16
+        bne lv_y_loop
+
+        clc
+        lda LEVEL_DATA_PTR
+        adc #16
+        sta LEVEL_DATA_PTR
+        lda LEVEL_DATA_PTR+1
+        adc #0
+        sta LEVEL_DATA_PTR+1
+
+        clc
+        lda SCREEN_RAM_PTR
+        adc #22
+        sta SCREEN_RAM_PTR
+        lda SCREEN_RAM_PTR+1
+        adc #0
+        sta SCREEN_RAM_PTR+1
+
+        clc
+        lda COLOR_RAM_PTR
+        adc #22
+        sta COLOR_RAM_PTR
+        lda COLOR_RAM_PTR+1
+        adc #0
+        sta COLOR_RAM_PTR+1
+
+        inx
+        cpx #16
+        bne lv_x_loop
+
+        ldy #0
+        lda (LEVEL_DATA_PTR),y
         sta PLAYER_LOCATION_X
+        iny
+        lda (LEVEL_DATA_PTR),y
         sta PLAYER_LOCATION_Y
+        iny
+        lda (LEVEL_DATA_PTR),y
         sta PLAYER_ROTATION
         jmp draw_update
 
@@ -329,4 +391,6 @@ sprite_data
         include "./data/sprite_data.s"
 sprite_data_end
 
-        ; include "./game_theme.s"
+level_data
+        include "./data/level_data.s"
+level_data_end
