@@ -40,14 +40,23 @@ COLOR_RAM_PTR = $04 ; 2 bytes
 TANK_DATA_PTR = $06 ; 2 bytes
 TANK_SCREEN_CODE = $08 ; 1 bytes
 TANK_COLOR_CODE = $09 ; 1 bytes
+TANK_STATE = $0a ; 1 bytes
 
 ; local variables
 LAST_KEY
         ds.b 1
-player_tank_data ; 4 bytes for tank_x, tank_y, tank_rotation, and state_bits
-        ds.b 4
+all_tank_data ; since player_tank_data and enemy_tank_data are right next to each other, we can load them both with a loop
+player_tank_data ; 3 bytes for tank_x, tank_y, tank_rotation
+        ds.b 3
 enemy_tank_data
-        ds.b 4*8
+        ds.b 3*8
+player_shot_data ; there are max 8 shots, and shots data can be [0, 3)
+        ds.b 8
+all_tank_state
+player_tank_state
+        ds.b 1
+enemy_tank_state
+        ds.b 1*8
 
 ; main_game_loop
         subroutine
@@ -139,15 +148,21 @@ main_game_loop
         dex
         bpl .lv_x_loop
 
-        ldy #0
+; load player tank data
+        ldy #27+8-1
+.load_tank_loop
         lda (LEVEL_DATA_PTR),y
-        sta player_tank_data
-        iny
-        lda (LEVEL_DATA_PTR),y
-        sta player_tank_data+1
-        iny
-        lda (LEVEL_DATA_PTR),y
-        sta player_tank_data+2
+        sta all_tank_data,y
+        dey
+        bpl .load_tank_loop
+
+        ldy #9-1
+.load_state_loop
+        lda #0
+        sta all_tank_state,y
+        dey
+        bpl .load_state_loop
+
         jmp .draw_update
 
 .mgl_loop
@@ -157,19 +172,19 @@ main_game_loop
         sta LAST_KEY
         beq .skip_drawing
 
-        lda player_tank_data+3
+        lda player_tank_state
         beq .check_key
         lsr
-        sta player_tank_data+3
+        sta player_tank_state
         beq .on_move
         lsr
-        sta player_tank_data+3
+        sta player_tank_state
         beq .on_rotate
 
 .check_key
         lda CURRENT_KEY
         tax
-        lda player_tank_data+3
+        lda player_tank_state
         cpx #UP_DOWN_KEY_CODE
         bne .not_up_down
         ora #1
@@ -184,7 +199,7 @@ main_game_loop
         jsr sfx_bullet
         ; rts
 .not_anything
-        sta player_tank_data+3
+        sta player_tank_state
         jmp .draw_update
 
 .skip_drawing
@@ -195,6 +210,8 @@ main_game_loop
         sta TANK_DATA_PTR
         lda #>player_tank_data
         sta TANK_DATA_PTR+1
+        lda player_tank_state
+        sta TANK_STATE
         jsr tank_data_to_ram
         ldy #0
         lda #SPACE_SCREEN_CODE
@@ -246,6 +263,8 @@ main_game_loop
         sta TANK_DATA_PTR+1
         lda #GREEN_COLOR_CODE
         sta TANK_COLOR_CODE
+        lda player_tank_state
+        sta TANK_STATE
         jsr draw_tank_sr
 
 .finish_update
@@ -265,8 +284,7 @@ draw_tank_sr
         clc
         adc #TANK_UP_SCREEN_CODE
         sta TANK_SCREEN_CODE
-        ldy #3
-        lda (TANK_DATA_PTR),y ; y = 3 -> state_bits
+        lda TANK_STATE
         beq .normal
         lsr
         beq .moving
@@ -309,22 +327,22 @@ draw_tank_sr
 tank_data_to_ram
         clc
         ldy #0
-        lda (TANK_DATA_PTR),y ; y = 0 -> game_loc_x
+        lda (TANK_DATA_PTR),y ; y = 0 -> tank_x
         adc #<SCREEN_RAM+GAME_SCREEN_OFFSET
         sta SCREEN_RAM_PTR
         lda #>SCREEN_RAM
         adc #0
         sta SCREEN_RAM_PTR+1
         clc
-        lda (TANK_DATA_PTR),y ; y = 0 -> game_loc_x
+        lda (TANK_DATA_PTR),y ; y = 0 -> tank_x
         adc #<COLOR_RAM+GAME_SCREEN_OFFSET
         sta COLOR_RAM_PTR
         lda #>COLOR_RAM
         adc #0
         sta COLOR_RAM_PTR+1
         iny
-        lda (TANK_DATA_PTR),y ; y = 1 -> game_loc_y
-        beq .skip_y_loop ; if game_loc_y == 0
+        lda (TANK_DATA_PTR),y ; y = 1 -> tank_y
+        beq .skip_y_loop ; if tank_y == 0
         tax
 
 .y_loop
@@ -357,13 +375,13 @@ TANK_HEAD_Y
         ds.b 1
 get_tank_head
         ldy #0
-        lda (TANK_DATA_PTR),y ; y = 0 -> game_loc_x
+        lda (TANK_DATA_PTR),y ; y = 0 -> tank_x
         sta TANK_HEAD_X
         iny
-        lda (TANK_DATA_PTR),y ; y = 1 -> game_loc_y
+        lda (TANK_DATA_PTR),y ; y = 1 -> tank_y
         sta TANK_HEAD_Y
         iny
-        lda (TANK_DATA_PTR),y ; y = 2 -> game_loc_rotation
+        lda (TANK_DATA_PTR),y ; y = 2 -> tank_rot
         tax
         beq .up
         dex
