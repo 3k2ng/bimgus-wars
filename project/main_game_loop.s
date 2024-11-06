@@ -21,7 +21,7 @@ SPACE_SCREEN_CODE = $00
 WALL_SCREEN_CODE = $01
 CRACK_SCREEN_CODE = $02
 BUSH_SCREEN_CODE = $03
-TANK_SCREEN_CODE_UP = $04
+TANK_UP_SCREEN_CODE = $04
 
 ; color code
 BLACK_COLOR_CODE = 0
@@ -37,22 +37,20 @@ GAME_SCREEN_OFFSET = 69
 LEVEL_DATA_PTR = $00 ; 2 bytes
 SCREEN_RAM_PTR = $02 ; 2 bytes
 COLOR_RAM_PTR = $04 ; 2 bytes
-GAME_LOC_PTR = $06 ; 2 bytes for game_loc_to_ram
-TANK_SCREEN_CODE = $08 ; 1 bytes for draw_tank_sr
-TANK_COLOR_CODE = $09 ; 1 bytes for draw_tank_sr
+TANK_DATA_PTR = $06 ; 2 bytes
+TANK_SCREEN_CODE = $08 ; 1 bytes
+TANK_COLOR_CODE = $09 ; 1 bytes
 
 ; local variables
 LAST_KEY
         ds.b 1
-PLAYER_LOCATION_X
-        ds.b 1 ; [0, 16)
-PLAYER_LOCATION_Y
-        ds.b 1 ; [0, 16)
-PLAYER_ROTATION
-        ds.b 1 ; [0, 4)
-PLAYER_STATE_BITS
-        ds.b 1 ; %0000 00rm
+player_tank_data ; 4 bytes for tank_x, tank_y, tank_rotation, and state_bits
+        ds.b 4
+enemy_tank_data
+        ds.b 4*8
 
+; main_game_loop
+        subroutine
 main_game_loop
         lda #<level_data
         sta LEVEL_DATA_PTR
@@ -60,11 +58,11 @@ main_game_loop
         sta LEVEL_DATA_PTR+1
 
         ldx #sprite_data_end-sprite_data
-load_sprite_loop
+.load_sprite_loop
         lda sprite_data-1,x
         sta CHARACTER_RAM-1,x
         dex
-        bne load_sprite_loop
+        bne .load_sprite_loop
 
         lda #<SCREEN_RAM
         sta SCREEN_RAM_PTR
@@ -74,27 +72,25 @@ load_sprite_loop
         sta COLOR_RAM_PTR
         lda #>COLOR_RAM
         sta COLOR_RAM_PTR+1
-clear_screen_loop
+.clear_screen_loop
         ldy #0
         lda #SPACE_SCREEN_CODE
         sta (SCREEN_RAM_PTR),y
         lda #BLACK_COLOR_CODE
         sta (COLOR_RAM_PTR),y
         inc SCREEN_RAM_PTR
-        bne mgsc0
+        bne .mgsc0
         inc SCREEN_RAM_PTR+1
-mgsc0
+.mgsc0
         inc COLOR_RAM_PTR
-        bne mgsc1
+        bne .mgsc1
         inc COLOR_RAM_PTR+1
-mgsc1
+.mgsc1
         lda SCREEN_RAM_PTR+1
         cmp #>SCREEN_RAM_END
-        beq done_clear_screen
-        jmp clear_screen_loop
-done_clear_screen
+        bne .clear_screen_loop
 
-mgl_start
+.mgl_start
         lda #<SCREEN_RAM+GAME_SCREEN_OFFSET
         sta SCREEN_RAM_PTR
         lda #>SCREEN_RAM
@@ -104,17 +100,17 @@ mgl_start
         lda #>COLOR_RAM
         sta COLOR_RAM_PTR+1
         ldx #15
-lv_x_loop
+.lv_x_loop
         ldy #15
-lv_y_loop
+.lv_y_loop
         lda (LEVEL_DATA_PTR),y
         sta (SCREEN_RAM_PTR),y
-        beq skip_color
+        beq .skip_color
         lda #WHITE_COLOR_CODE
         sta (COLOR_RAM_PTR),y
-skip_color
+.skip_color
         dey
-        bpl lv_y_loop
+        bpl .lv_y_loop
 
         clc
         lda LEVEL_DATA_PTR
@@ -141,139 +137,136 @@ skip_color
         sta COLOR_RAM_PTR+1
 
         dex
-        bpl lv_x_loop
+        bpl .lv_x_loop
 
         ldy #0
         lda (LEVEL_DATA_PTR),y
-        sta PLAYER_LOCATION_X
+        sta player_tank_data
         iny
         lda (LEVEL_DATA_PTR),y
-        sta PLAYER_LOCATION_Y
+        sta player_tank_data+1
         iny
         lda (LEVEL_DATA_PTR),y
-        sta PLAYER_ROTATION
-        jmp draw_update
+        sta player_tank_data+2
+        jmp .draw_update
 
-mgl_loop
+.mgl_loop
 ; update key
         lda CURRENT_KEY
         cmp LAST_KEY
         sta LAST_KEY
-        beq skip_drawing
+        beq .skip_drawing
 
-        lda PLAYER_STATE_BITS
-        beq check_key
+        lda player_tank_data+3
+        beq .check_key
         lsr
-        sta PLAYER_STATE_BITS
-        beq on_move
+        sta player_tank_data+3
+        beq .on_move
         lsr
-        sta PLAYER_STATE_BITS
-        beq on_rotate
+        sta player_tank_data+3
+        beq .on_rotate
 
-check_key
+.check_key
         lda CURRENT_KEY
         tax
-        lda PLAYER_STATE_BITS
+        lda player_tank_data+3
         cpx #UP_DOWN_KEY_CODE
-        bne not_up_down
-        ora #1 ; begin moving forward
-not_up_down
+        bne .not_up_down
+        ora #1
+.not_up_down
         cpx #LEFT_RIGHT_KEY_CODE
-        bne not_left_right
-        ora #2 ; begin rotating
-not_left_right
+        bne .not_left_right
+        ora #2
+.not_left_right
         cpx #SPACE_KEY_CODE
-        bne not_anything
+        bne .not_anything
         ;;; shoot i guess
         jsr sfx_bullet
         ; rts
-not_anything
-        sta PLAYER_STATE_BITS
-        jmp draw_update
+.not_anything
+        sta player_tank_data+3
+        jmp .draw_update
 
-skip_drawing
-        jmp finish_update
+.skip_drawing
+        jmp .finish_update
 
-on_move
-        lda #<PLAYER_LOCATION_X
-        sta GAME_LOC_PTR
-        lda #>PLAYER_LOCATION_X
-        sta GAME_LOC_PTR+1
-        jsr game_loc_to_ram
+.on_move
+        lda #<player_tank_data
+        sta TANK_DATA_PTR
+        lda #>player_tank_data
+        sta TANK_DATA_PTR+1
+        jsr tank_data_to_ram
         ldy #0
         lda #SPACE_SCREEN_CODE
         sta (SCREEN_RAM_PTR),y
         lda #BLACK_COLOR_CODE
         sta (COLOR_RAM_PTR),y
-        lda PLAYER_ROTATION
+        lda player_tank_data+2
         cmp #0
-        beq move_up
+        beq .move_up
         cmp #1
-        beq move_left
+        beq .move_left
         cmp #2
-        beq move_down
+        beq .move_down
         cmp #3
-        beq move_right
+        beq .move_right
 
-move_up
-        dec PLAYER_LOCATION_Y
-        jmp clamp_location
-move_left
-        dec PLAYER_LOCATION_X
-        jmp clamp_location
-move_down
-        inc PLAYER_LOCATION_Y
-        jmp clamp_location
-move_right
-        inc PLAYER_LOCATION_X
-        jmp clamp_location
+.move_up
+        dec player_tank_data+1
+        jmp .clamp_location
+.move_left
+        dec player_tank_data
+        jmp .clamp_location
+.move_down
+        inc player_tank_data+1
+        jmp .clamp_location
+.move_right
+        inc player_tank_data
+        jmp .clamp_location
 
-clamp_location
-        lda PLAYER_LOCATION_X
+.clamp_location
+        lda player_tank_data
         and #15 ; x_pos %= 16
-        sta PLAYER_LOCATION_X
-        lda PLAYER_LOCATION_Y
+        sta player_tank_data
+        lda player_tank_data+1
         and #15 ; y_pos %= 16
-        sta PLAYER_LOCATION_Y
-        jmp draw_update
+        sta player_tank_data+1
+        jmp .draw_update
 
-on_rotate
-        inc PLAYER_ROTATION
-        lda PLAYER_ROTATION
+.on_rotate
+        inc player_tank_data+2
+        lda player_tank_data+2
         and #3
-        sta PLAYER_ROTATION
+        sta player_tank_data+2
 
-draw_update
-        lda #<PLAYER_LOCATION_X
-        sta GAME_LOC_PTR
-        lda #>PLAYER_LOCATION_X
-        sta GAME_LOC_PTR+1
+.draw_update
+        lda #<player_tank_data
+        sta TANK_DATA_PTR
+        lda #>player_tank_data
+        sta TANK_DATA_PTR+1
         lda #GREEN_COLOR_CODE
         sta TANK_COLOR_CODE
         jsr draw_tank_sr
 
-finish_update
-        jmp mgl_loop
+.finish_update
+        jmp .mgl_loop
 
-break_loop
+.break_loop
         rts
 
+; draw_tank_sr
         subroutine
-TANK_HEAD_X
-        ds.b 1
-TANK_HEAD_Y
-        ds.b 1
 draw_tank_sr
-        jsr game_loc_to_ram
+        jsr tank_data_to_ram
         ldy #2
-        lda (GAME_LOC_PTR),y ; y = 2 -> game_loc_rotation
+        lda (TANK_DATA_PTR),y ; y = 2 -> tank_rotation
         asl
         asl
         clc
-        adc #TANK_SCREEN_CODE_UP
+        adc #TANK_UP_SCREEN_CODE
         sta TANK_SCREEN_CODE
         ldy #3
-        lda (GAME_LOC_PTR),y ; y = 3 -> game_loc_state_bits
+        lda (TANK_DATA_PTR),y ; y = 3 -> state_bits
         beq .normal
         lsr
         beq .moving
@@ -294,13 +287,83 @@ draw_tank_sr
         lda TANK_COLOR_CODE
         sta (COLOR_RAM_PTR),y
         inc TANK_SCREEN_CODE
-        lda (GAME_LOC_PTR),y ; y = 0 -> game_loc_x
+        jsr get_tank_head
+
+        lda #<tank_head_data
+        sta TANK_DATA_PTR
+        lda #>tank_head_data
+        sta TANK_DATA_PTR+1
+        jsr tank_data_to_ram
+
+.normal
+        ldy #0
+        lda TANK_SCREEN_CODE
+        sta (SCREEN_RAM_PTR),y
+        lda TANK_COLOR_CODE
+        sta (COLOR_RAM_PTR),y
+        rts
+
+; tank_data_to_ram
+; get tank data at TANK_DATA_PTR (tank_x, tank_y) and calculate corresponding SCREEN_RAM and COLOR_RAM location
+        subroutine
+tank_data_to_ram
+        clc
+        ldy #0
+        lda (TANK_DATA_PTR),y ; y = 0 -> game_loc_x
+        adc #<SCREEN_RAM+GAME_SCREEN_OFFSET
+        sta SCREEN_RAM_PTR
+        lda #>SCREEN_RAM
+        adc #0
+        sta SCREEN_RAM_PTR+1
+        clc
+        lda (TANK_DATA_PTR),y ; y = 0 -> game_loc_x
+        adc #<COLOR_RAM+GAME_SCREEN_OFFSET
+        sta COLOR_RAM_PTR
+        lda #>COLOR_RAM
+        adc #0
+        sta COLOR_RAM_PTR+1
+        iny
+        lda (TANK_DATA_PTR),y ; y = 1 -> game_loc_y
+        beq .skip_y_loop ; if game_loc_y == 0
+        tax
+
+.y_loop
+        clc
+        lda SCREEN_RAM_PTR
+        adc #22
+        sta SCREEN_RAM_PTR
+        lda SCREEN_RAM_PTR+1
+        adc #0
+        sta SCREEN_RAM_PTR+1
+        clc
+        lda COLOR_RAM_PTR
+        adc #22
+        sta COLOR_RAM_PTR
+        lda COLOR_RAM_PTR+1
+        adc #0
+        sta COLOR_RAM_PTR+1
+        dex
+        bne .y_loop
+.skip_y_loop
+        rts
+
+; get_tank_head
+; read tank data from TANK_DATA_PTR (tank_x, tank_y, and tank_rot) and calculate the tile in front of the tank
+        subroutine
+tank_head_data
+TANK_HEAD_X
+        ds.b 1
+TANK_HEAD_Y
+        ds.b 1
+get_tank_head
+        ldy #0
+        lda (TANK_DATA_PTR),y ; y = 0 -> game_loc_x
         sta TANK_HEAD_X
         iny
-        lda (GAME_LOC_PTR),y ; y = 1 -> game_loc_y
+        lda (TANK_DATA_PTR),y ; y = 1 -> game_loc_y
         sta TANK_HEAD_Y
         iny
-        lda (GAME_LOC_PTR),y ; y = 2 -> game_loc_rotation
+        lda (TANK_DATA_PTR),y ; y = 2 -> game_loc_rotation
         tax
         beq .up
         dex
@@ -328,63 +391,6 @@ draw_tank_sr
         lda TANK_HEAD_Y
         and #15
         sta TANK_HEAD_Y
-
-        lda #<TANK_HEAD_X
-        sta GAME_LOC_PTR
-        lda #>TANK_HEAD_X
-        sta GAME_LOC_PTR+1
-        jsr game_loc_to_ram
-
-.normal
-        ldy #0
-        lda TANK_SCREEN_CODE
-        sta (SCREEN_RAM_PTR),y
-        lda TANK_COLOR_CODE
-        sta (COLOR_RAM_PTR),y
-        rts
-
-        subroutine
-game_loc_to_ram
-        clc
-        ldy #0
-        lda (GAME_LOC_PTR),y ; y = 0 -> game_loc_x
-        adc #<SCREEN_RAM
-        adc #GAME_SCREEN_OFFSET
-        sta SCREEN_RAM_PTR
-        lda #>SCREEN_RAM
-        adc #0
-        sta SCREEN_RAM_PTR+1
-        clc
-        lda (GAME_LOC_PTR),y ; y = 0 -> game_loc_x
-        adc #<COLOR_RAM
-        adc #GAME_SCREEN_OFFSET
-        sta COLOR_RAM_PTR
-        lda #>COLOR_RAM
-        adc #0
-        sta COLOR_RAM_PTR+1
-        iny
-        lda (GAME_LOC_PTR),y ; y = 1 -> game_loc_y
-        beq .skip_y_loop ; if game_loc_y == 0
-        tax
-
-.y_loop
-        clc
-        lda SCREEN_RAM_PTR
-        adc #22
-        sta SCREEN_RAM_PTR
-        lda SCREEN_RAM_PTR+1
-        adc #0
-        sta SCREEN_RAM_PTR+1
-        clc
-        lda COLOR_RAM_PTR
-        adc #22
-        sta COLOR_RAM_PTR
-        lda COLOR_RAM_PTR+1
-        adc #0
-        sta COLOR_RAM_PTR+1
-        dex
-        bne .y_loop
-.skip_y_loop
         rts
 
 sprite_data
