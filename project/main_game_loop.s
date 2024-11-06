@@ -41,11 +41,14 @@ DATA_OFFSET_X = 0
 DATA_OFFSET_Y = 1
 DATA_OFFSET_ROTATION = 2
 
+SCREEN_CODE_OFFSET_TANK_ROTATING = 3
+
 ; constants
 SCREEN_ROW_SIZE = 22
 GAME_SCREEN_OFFSET = 69
 GAME_SIZE_WIDTH = 16
 GAME_SIZE_HEIGHT = 16
+ROTATION_COUNT = 4
 MAX_ENEMY_TANK_COUNT = 8
 TANK_DATA_SIZE = 3
 MAX_SHOT_COUNT = 8
@@ -243,7 +246,7 @@ main_game_loop
 .on_rotate
         inc player_tank_data+DATA_OFFSET_ROTATION
         lda player_tank_data+DATA_OFFSET_ROTATION
-        and #3
+        and #ROTATION_COUNT-1
         sta player_tank_data+DATA_OFFSET_ROTATION
         jmp .draw_update
 
@@ -356,7 +359,7 @@ draw_tank_sr
 .rotating
         clc
         lda TANK_SCREEN_CODE
-        adc #3
+        adc #SCREEN_CODE_OFFSET_TANK_ROTATING
         sta TANK_SCREEN_CODE
         jmp .normal
 
