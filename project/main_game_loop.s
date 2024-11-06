@@ -173,6 +173,19 @@ main_game_loop
         sta LAST_KEY
         beq .skip_drawing
 
+        lda #<player_tank_data
+        sta TANK_DATA_PTR
+        lda #>player_tank_data
+        sta TANK_DATA_PTR+1
+        lda player_tank_state
+        sta TANK_STATE
+        jsr get_tank_head
+        lda #<tank_head_data
+        sta TANK_DATA_PTR
+        lda #>tank_head_data
+        sta TANK_DATA_PTR+1
+        jsr tank_data_to_ram
+
         lda player_tank_state
         beq .check_key
         lsr
@@ -201,10 +214,26 @@ main_game_loop
         ; rts
 .not_anything
         sta player_tank_state
+
+        ldy #0
+        lda (SCREEN_RAM_PTR),y
+        beq .not_blocked
+        lda player_tank_state
+        and #2
+        sta player_tank_state
+.not_blocked
+
         jmp .draw_update
 
 .skip_drawing
         jmp .finish_update
+
+.on_rotate
+        inc player_tank_data+2
+        lda player_tank_data+2
+        and #3
+        sta player_tank_data+2
+        jmp .draw_update
 
 .on_move
         lda #<player_tank_data
@@ -249,13 +278,6 @@ main_game_loop
         lda player_tank_data+1
         and #15 ; y_pos %= 16
         sta player_tank_data+1
-        jmp .draw_update
-
-.on_rotate
-        inc player_tank_data+2
-        lda player_tank_data+2
-        and #3
-        sta player_tank_data+2
 
 .draw_update
         ; draw player tank
@@ -286,9 +308,6 @@ main_game_loop
         ldy ENEMY_TANK_INDEX
         lda enemy_tank_data,y
         bmi .skip_current_enemy_draw
-
-;inf_loop
-;        jmp inf_loop
 
         lda enemy_tank_state,y
         sta TANK_STATE
