@@ -3,7 +3,6 @@
 ; ram location
 CURRENT_KEY = $c5
 JIFFY_CLOCK = $a2 ; the only byte that matters
-; CURRENT_KEY = $c5
 
 ; CHARACTER_RAM = $1c00
 ; SCREEN_RAM = $1e00

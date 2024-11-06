@@ -15,12 +15,12 @@ STARTR  = 225                   ; initial pitch of rock
 FINALR  = 217                   ; final pitch of rock
 
 ; KERNAL addresses
-SB      = $900a                 ; bass
-SA      = $900b                 ; alto
-SS      = $900c                 ; soprano
-SN      = $900d                 ; noise
-SV      = $900e                 ; volume
-JC      = $00a2                 ; jiffy clock
+; SB      = $900a                 ; bass
+; SA      = $900b                 ; alto
+; SS      = $900c                 ; soprano
+; SN      = $900d                 ; noise
+; SV      = $900e                 ; volume
+; JC      = $00a2                 ; jiffy clock
 
 
 ; generic cleanup

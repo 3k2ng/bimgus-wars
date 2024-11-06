@@ -49,7 +49,7 @@ CORB1 = $96
 ; Info pertaining to input reading
 CHROUT = $ffd2
 
-CURRENT_KEY = $c5
+; CURRENT_KEY = $c5
 
 SPACE_KEY_CODE = $20
 UP_DOWN_KEY_CODE = $1f
