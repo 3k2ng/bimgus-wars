@@ -26,9 +26,29 @@ WHITE_COLOR_CODE = 1
 RED_COLOR_CODE = 2
 GREEN_COLOR_CODE = 5
 
+; rotation code
+ROTATION_CODE_UP = 0
+ROTATION_CODE_LEFT = 1
+ROTATION_CODE_DOWN = 2
+ROTATION_CODE_RIGHT = 3
+
+; state bits
+STATE_BIT_MOVING = 1
+STATE_BIT_ROTATION = 2
+
+; offsets
+DATA_OFFSET_X = 0
+DATA_OFFSET_Y = 1
+DATA_OFFSET_ROTATION = 2
+
 ; constants
-ROW_SIZE = 22
+SCREEN_ROW_SIZE = 22
 GAME_SCREEN_OFFSET = 69
+GAME_SIZE_WIDTH = 16
+GAME_SIZE_HEIGHT = 16
+MAX_ENEMY_TANK_COUNT = 8
+TANK_DATA_SIZE = 3
+MAX_SHOT_COUNT = 8
 
 ; zero page variables
 LEVEL_DATA_PTR = $00 ; 2 bytes
@@ -107,9 +127,9 @@ main_game_loop
         sta COLOR_RAM_PTR
         lda #>COLOR_RAM
         sta COLOR_RAM_PTR+1
-        ldx #15
+        ldx #GAME_SIZE_HEIGHT-1
 .lv_x_loop
-        ldy #15
+        ldy #GAME_SIZE_WIDTH-1
 .lv_y_loop
         lda (LEVEL_DATA_PTR),y
         sta (SCREEN_RAM_PTR),y
@@ -122,7 +142,7 @@ main_game_loop
 
         clc
         lda LEVEL_DATA_PTR
-        adc #16
+        adc #GAME_SIZE_WIDTH
         sta LEVEL_DATA_PTR
         lda LEVEL_DATA_PTR+1
         adc #0
@@ -130,7 +150,7 @@ main_game_loop
 
         clc
         lda SCREEN_RAM_PTR
-        adc #22
+        adc #SCREEN_ROW_SIZE
         sta SCREEN_RAM_PTR
         lda SCREEN_RAM_PTR+1
         adc #0
@@ -138,7 +158,7 @@ main_game_loop
 
         clc
         lda COLOR_RAM_PTR
-        adc #22
+        adc #SCREEN_ROW_SIZE
         sta COLOR_RAM_PTR
         lda COLOR_RAM_PTR+1
         adc #0
@@ -148,14 +168,14 @@ main_game_loop
         bpl .lv_x_loop
 
 ; load player tank data
-        ldy #27+8-1
+        ldy #(MAX_ENEMY_TANK_COUNT+1)*TANK_DATA_SIZE+MAX_SHOT_COUNT-1
 .load_tank_loop
         lda (LEVEL_DATA_PTR),y
         sta all_tank_data,y
         dey
         bpl .load_tank_loop
 
-        ldy #9-1
+        ldy #MAX_ENEMY_TANK_COUNT+1-1
 .load_state_loop
         lda #0
         sta all_tank_state,y
@@ -199,11 +219,11 @@ main_game_loop
         lda player_tank_state
         cpx #UP_DOWN_KEY_CODE
         bne .not_up_down
-        ora #1
+        ora #STATE_BIT_MOVING
 .not_up_down
         cpx #LEFT_RIGHT_KEY_CODE
         bne .not_left_right
-        ora #2
+        ora #STATE_BIT_ROTATION
 .not_left_right
         sta player_tank_state
 
@@ -211,7 +231,7 @@ main_game_loop
         lda (SCREEN_RAM_PTR),y
         beq .not_blocked
         lda player_tank_state
-        and #2
+        and #STATE_BIT_ROTATION
         sta player_tank_state
 .not_blocked
 
@@ -221,10 +241,10 @@ main_game_loop
         jmp .finish_update
 
 .on_rotate
-        inc player_tank_data+2
-        lda player_tank_data+2
+        inc player_tank_data+DATA_OFFSET_ROTATION
+        lda player_tank_data+DATA_OFFSET_ROTATION
         and #3
-        sta player_tank_data+2
+        sta player_tank_data+DATA_OFFSET_ROTATION
         jmp .draw_update
 
 .on_move
@@ -240,35 +260,35 @@ main_game_loop
         sta (SCREEN_RAM_PTR),y
         lda #BLACK_COLOR_CODE
         sta (COLOR_RAM_PTR),y
-        lda player_tank_data+2
-        cmp #0
+        lda player_tank_data+DATA_OFFSET_ROTATION
+        ; ROTATION_CODE_UP == 0
         beq .move_up
-        cmp #1
+        cmp #ROTATION_CODE_LEFT
         beq .move_left
-        cmp #2
+        cmp #ROTATION_CODE_DOWN
         beq .move_down
-        cmp #3
+        cmp #ROTATION_CODE_RIGHT
         beq .move_right
 
 .move_up
-        dec player_tank_data+1
+        dec player_tank_data+DATA_OFFSET_Y
         jmp .clamp_location
 .move_left
-        dec player_tank_data
+        dec player_tank_data+DATA_OFFSET_X
         jmp .clamp_location
 .move_down
-        inc player_tank_data+1
+        inc player_tank_data+DATA_OFFSET_Y
         jmp .clamp_location
 .move_right
-        inc player_tank_data
+        inc player_tank_data+DATA_OFFSET_X
         jmp .clamp_location
 
 .clamp_location
         lda player_tank_data
-        and #15 ; x_pos %= 16
+        and #GAME_SIZE_WIDTH-1 ; %= 16
         sta player_tank_data
         lda player_tank_data+1
-        and #15 ; y_pos %= 16
+        and #GAME_SIZE_HEIGHT-1 ; %= 16
         sta player_tank_data+1
 
 .draw_update
@@ -291,7 +311,7 @@ main_game_loop
 .draw_enemy_loop
         clc
         lda TANK_DATA_PTR
-        adc #3
+        adc #TANK_DATA_SIZE
         sta TANK_DATA_PTR
         lda TANK_DATA_PTR+1
         adc #0
@@ -307,7 +327,7 @@ main_game_loop
 .skip_current_enemy_draw
         inc ENEMY_TANK_INDEX
         lda ENEMY_TANK_INDEX
-        cmp #8
+        cmp #MAX_ENEMY_TANK_COUNT
         bne .draw_enemy_loop
 
 .finish_update
@@ -320,7 +340,7 @@ main_game_loop
         subroutine
 draw_tank_sr
         jsr tank_data_to_ram
-        ldy #2
+        ldy #DATA_OFFSET_ROTATION
         lda (TANK_DATA_PTR),y ; y = 2 -> tank_rotation
         asl
         asl
@@ -391,14 +411,14 @@ tank_data_to_ram
 .y_loop
         clc
         lda SCREEN_RAM_PTR
-        adc #22
+        adc #SCREEN_ROW_SIZE
         sta SCREEN_RAM_PTR
         lda SCREEN_RAM_PTR+1
         adc #0
         sta SCREEN_RAM_PTR+1
         clc
         lda COLOR_RAM_PTR
-        adc #22
+        adc #SCREEN_ROW_SIZE
         sta COLOR_RAM_PTR
         lda COLOR_RAM_PTR+1
         adc #0
@@ -447,10 +467,10 @@ get_tank_head
 
 .clamp_loc
         lda TANK_HEAD_X
-        and #15
+        and #GAME_SIZE_WIDTH-1 ; %=16
         sta TANK_HEAD_X
         lda TANK_HEAD_Y
-        and #15
+        and #GAME_SIZE_HEIGHT-1 ; %=16
         sta TANK_HEAD_Y
         rts
 
