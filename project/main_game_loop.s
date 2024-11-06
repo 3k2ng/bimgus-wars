@@ -126,6 +126,12 @@ main_game_loop
         bne .clear_screen_loop
 
 .mgl_start
+        ldy #0
+        lda (LEVEL_DATA_PTR),y
+        bpl .load_level ; if level exist
+        rts
+        
+.load_level
         lda #<SCREEN_RAM+GAME_SCREEN_OFFSET
         sta SCREEN_RAM_PTR
         lda #>SCREEN_RAM
@@ -183,10 +189,13 @@ main_game_loop
         bpl .load_tank_loop
 
 ; finally increment the level data pointer to point to the start of the next level
-        lda LEVEL_DATA_PTR
         clc
+        lda LEVEL_DATA_PTR
         adc #(MAX_ENEMY_TANK_COUNT+1)*TANK_DATA_SIZE+MAX_SHOT_COUNT
         sta LEVEL_DATA_PTR
+        lda LEVEL_DATA_PTR+1
+        adc #0
+        sta LEVEL_DATA_PTR+1
 
 ; draw the bullets
         ldy #7
@@ -371,9 +380,6 @@ main_game_loop
 
 .finish_update
         jmp .mgl_loop
-
-.break_loop
-        rts
 
 ; draw_tank_sr
         subroutine
