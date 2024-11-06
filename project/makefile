@@ -13,7 +13,7 @@ zx02_data: bin_data ./data/zx02 ./data/make_zx02.py
 
 ./export/_bimgus_game.prg: ./bimgus_game.s ./main_game_loop.s ./data/sprite_data.s zx02_data
 
-./data/level_data.s: ./data/make_level.py
+./data/level_data.s: ./data/make_level.py ./data/levels.txt
 	python ./data/make_level.py ./data
 
 ./export/_bimgus_game.prg: ./bimgus_game.s ./main_game_loop.s ./data/sprite_data.s ./data/level_data.s
