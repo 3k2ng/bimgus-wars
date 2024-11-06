@@ -42,6 +42,8 @@ TANK_STATE = $0a ; 1 bytes
 ; local variables
 LAST_KEY
         ds.b 1
+ENEMY_TANK_INDEX
+        ds.b 1
 all_tank_data ; since player_tank_data and enemy_tank_data are right next to each other, we can load them both with a loop
 player_tank_data ; 3 bytes for tank_x, tank_y, tank_rotation
         ds.b 3
@@ -248,6 +250,7 @@ main_game_loop
         sta player_tank_data+2
 
 .draw_update
+        ; draw player tank
         lda #<player_tank_data
         sta TANK_DATA_PTR
         lda #>player_tank_data
@@ -257,6 +260,36 @@ main_game_loop
         lda player_tank_state
         sta TANK_STATE
         jsr draw_tank_sr
+
+        ; draw enemy tanks
+        lda #RED_COLOR_CODE
+        sta TANK_COLOR_CODE
+        lda #0
+        sta ENEMY_TANK_INDEX
+.draw_enemy_loop
+        clc
+        lda TANK_DATA_PTR
+        adc #3
+        sta TANK_DATA_PTR
+        lda TANK_DATA_PTR+1
+        adc #0
+        sta TANK_DATA_PTR+1
+
+        ldy ENEMY_TANK_INDEX
+        lda enemy_tank_data,y
+        bmi .skip_current_enemy_draw
+
+;inf_loop
+;        jmp inf_loop
+
+        lda enemy_tank_state,y
+        sta TANK_STATE
+        jsr draw_tank_sr
+.skip_current_enemy_draw
+        inc ENEMY_TANK_INDEX
+        lda ENEMY_TANK_INDEX
+        cmp #8
+        bne .draw_enemy_loop
 
 .finish_update
         jmp .mgl_loop
