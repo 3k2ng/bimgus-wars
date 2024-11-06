@@ -157,6 +157,16 @@ main_game_loop
         dey
         bpl .load_tank_loop
 
+; draw the bullets
+        ldy #7
+.draw_bullets_loop
+        lda player_tank_data+9+8,y
+        sta (SCREEN_RAM_PTR),y
+        lda #GREEN_COLOR_CODE
+        sta (COLOR_RAM_PTR),y
+        dey
+        bpl .draw_bullets_loop
+
         ldy #9-1
 .load_state_loop
         lda #0
