@@ -61,9 +61,9 @@ decompress_all
         sta index
 ; Decompress the title screen
         ; char set
-        lda #<zx0_ini_block_char_set
+        lda #<ini_block
         sta ini
-        lda #>zx0_ini_block_char_set
+        lda #>ini_block
         sta ini+1
         clc
         jmp test7
@@ -84,19 +84,19 @@ test7
 
         ; Initial values for offset, source, destination and bitr
         ; dc.b $00, $00, <comp_data, >comp_data, <out_addr, >out_addr, $80
-zx0_ini_block_char_set
+ini_block
+; char set
         dc.b $00, $00
         dc.w zx02_char_set, CHARACTER_RAM
         dc.b $80
-zx0_ini_block_char_map
+; char map
         dc.b $00, $00
         dc.w zx02_char_map, SCREEN_RAM
         dc.b $80
-zx0_ini_block_color_map
+; color map
         dc.b $00, $00
         dc.w zx02_color_map, COLOR_RAM
         dc.b $80
-
 
 ;--------------------------------------------------
 ; Decompress ZX0 data (6502 optimized format)
