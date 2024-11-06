@@ -181,6 +181,10 @@ main_game_loop
         dey
         bpl .load_tank_loop
 
+        lda LEVEL_DATA_PTR
+        adc #(MAX_ENEMY_TANK_COUNT+1)*TANK_DATA_SIZE+MAX_SHOT_COUNT-1
+        sta LEVEL_DATA_PTR
+
 ; draw the bullets
         ldy #7
 .draw_bullets_loop
