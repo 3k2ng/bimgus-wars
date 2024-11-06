@@ -44,7 +44,7 @@ with open(f"{data_path}/levels.txt", "r") as fi:
             i += 1
         else:
             print("Too many enemy info")
-    print(levels)
+
     with open(f"{data_path}/level_data.s", "w") as f:
         for level in levels:
             for i in range(16):
@@ -63,13 +63,16 @@ with open(f"{data_path}/levels.txt", "r") as fi:
                 + ", ".join(["${:02x}".format(b) for b in level["player"]])
                 + "\n"
             )
+            if len(level["enemy"]) < 8:
+                level["enemy"] += [[0xFF, 0xFF, 0xFF]] * (8 - len(level["enemy"]))
             for enemy in level["enemy"]:
                 f.write(
                     "\tdc.b " + ", ".join(["${:02x}".format(b) for b in enemy]) + "\n"
                 )
-            f.write("\tdc.b $ff\n")
+            if len(level["shots"]) < 8:
+                level["shots"] += [0x00] * (8 - len(level["shots"]))
             f.write(
                 "\tdc.b "
-                + ", ".join(["${:02x}".format(b) for b in level["shots"] + [0xFF]])
+                + ", ".join(["${:02x}".format(b) for b in level["shots"]])
                 + "\n"
             )
