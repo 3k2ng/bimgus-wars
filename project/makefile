@@ -8,7 +8,10 @@ all: clean $(ALL)
 bin_data: ./data/make_bin.py
 	python ./data/make_bin.py
 
-zx02_data: bin_data ./data/zx02 ./data/make_zx02.py
+./data/zx02/zx02: ./data/zx02/src/zx02.c ./data/zx02/src/memory.c ./data/zx02/src/compress.c ./data/zx02/src/optimize.c
+	$(CC) -o$@ ./data/zx02/src/zx02.c ./data/zx02/src/memory.c ./data/zx02/src/compress.c ./data/zx02/src/optimize.c
+
+zx02_data: bin_data ./data/zx02/xz02 ./data/make_zx02.py
 	python ./data/make_zx02.py
 	rm -rf ./data/*.bin
 	rm -rf ./data/*.zx02
@@ -24,6 +27,7 @@ zx02_data: bin_data ./data/zx02 ./data/make_zx02.py
 	dasm $< -o$@ -lexport/$(<:.s=.lst)
 
 clean:
+	rm -rf ./data/zx02/zx02
 	rm -rf ./data/*.s
 	rm -rf ./data/*.bin
 	rm -rf ./data/*.zx02
