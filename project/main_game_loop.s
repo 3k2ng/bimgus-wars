@@ -11,9 +11,10 @@ SCREEN_RAM_END = $2000
 COLOR_RAM_END = $9800
 
 ; keycode
-; SPACE_KEY_CODE = $20
-; UP_DOWN_KEY_CODE = $1f
-; LEFT_RIGHT_KEY_CODE = $17
+SPACE_KEY_CODE = $20
+UP_DOWN_KEY_CODE = $1f
+LEFT_RIGHT_KEY_CODE = $17
+F1_KEY_CODE = $0f
 
 ; screen code
 SPACE_SCREEN_CODE = $00
@@ -181,8 +182,10 @@ main_game_loop
         dey
         bpl .load_tank_loop
 
+; finally increment the level data pointer to point to the start of the next level
         lda LEVEL_DATA_PTR
-        adc #(MAX_ENEMY_TANK_COUNT+1)*TANK_DATA_SIZE+MAX_SHOT_COUNT-1
+        clc
+        adc #(MAX_ENEMY_TANK_COUNT+1)*TANK_DATA_SIZE+MAX_SHOT_COUNT
         sta LEVEL_DATA_PTR
 
 ; draw the bullets
@@ -249,6 +252,12 @@ main_game_loop
         bne .not_left_right
         ora #STATE_BIT_ROTATION
 .not_left_right
+        ; cheat code 'f1' - load next level
+        cpx #F1_KEY_CODE
+        bne .not_f1
+        jmp .mgl_start
+        ; jmp .break_loop
+.not_f1
         cpx #SPACE_KEY_CODE
         bne .not_anything
         ;;; shoot i guess

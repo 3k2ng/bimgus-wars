@@ -51,9 +51,9 @@ CHROUT = $ffd2
 
 ; CURRENT_KEY = $c5
 
-SPACE_KEY_CODE = $20
-UP_DOWN_KEY_CODE = $1f
-LEFT_RIGHT_KEY_CODE = $17
+; SPACE_KEY_CODE = $20
+; UP_DOWN_KEY_CODE = $1f
+; LEFT_RIGHT_KEY_CODE = $17
 
 ; main
 decompress_all
