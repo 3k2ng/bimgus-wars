@@ -21,6 +21,7 @@ WALL_SCREEN_CODE = $01
 CRACK_SCREEN_CODE = $02
 BUSH_SCREEN_CODE = $03
 TANK_UP_SCREEN_CODE = $04
+BULLET_SCREEN_CODE = $18
 
 ; color code
 BLACK_COLOR_CODE = 0
@@ -183,9 +184,13 @@ main_game_loop
 ; draw the bullets
         ldy #7
 .draw_bullets_loop
-        lda player_tank_data+9+8,y
+        lda player_shot_data,y
+        beq .no_bullet
+        adc #BULLET_SCREEN_CODE
+.no_bullet
         sta (SCREEN_RAM_PTR),y
-        lda #GREEN_COLOR_CODE
+        sbc #BULLET_SCREEN_CODE
+        adc #GREEN_COLOR_CODE-1
         sta (COLOR_RAM_PTR),y
         dey
         bpl .draw_bullets_loop
