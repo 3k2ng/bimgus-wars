@@ -2,16 +2,19 @@
 
 ; ram location
 CURRENT_KEY = $c5
+JIFFY_CLOCK = $a2 ; the only byte that matters
 
-CHARACTER_RAM = $1c00
-SCREEN_RAM = $1e00
+; CHARACTER_RAM = $1c00
+; SCREEN_RAM = $1e00
 SCREEN_RAM_END = $2000
-COLOR_RAM = $9600
+; COLOR_RAM = $9600
 COLOR_RAM_END = $9800
 
 ; keycode
+SPACE_KEY_CODE = $20
 UP_DOWN_KEY_CODE = $1f
 LEFT_RIGHT_KEY_CODE = $17
+F1_KEY_CODE = $0f
 
 ; screen code
 SPACE_SCREEN_CODE = $00
@@ -19,6 +22,7 @@ WALL_SCREEN_CODE = $01
 CRACK_SCREEN_CODE = $02
 BUSH_SCREEN_CODE = $03
 TANK_UP_SCREEN_CODE = $04
+BULLET_SCREEN_CODE = $18
 
 ; color code
 BLACK_COLOR_CODE = 0
@@ -122,6 +126,12 @@ main_game_loop
         bne .clear_screen_loop
 
 .mgl_start
+        ldy #0
+        lda (LEVEL_DATA_PTR),y
+        bpl .load_level ; if level exist
+        rts
+        
+.load_level
         lda #<SCREEN_RAM+GAME_SCREEN_OFFSET
         sta SCREEN_RAM_PTR
         lda #>SCREEN_RAM
@@ -178,6 +188,29 @@ main_game_loop
         dey
         bpl .load_tank_loop
 
+; finally increment the level data pointer to point to the start of the next level
+        clc
+        lda LEVEL_DATA_PTR
+        adc #(MAX_ENEMY_TANK_COUNT+1)*TANK_DATA_SIZE+MAX_SHOT_COUNT
+        sta LEVEL_DATA_PTR
+        lda LEVEL_DATA_PTR+1
+        adc #0
+        sta LEVEL_DATA_PTR+1
+
+; draw the bullets
+        ldy #7
+.draw_bullets_loop
+        lda player_shot_data,y
+        beq .no_bullet
+        adc #BULLET_SCREEN_CODE
+.no_bullet
+        sta (SCREEN_RAM_PTR),y
+        sbc #BULLET_SCREEN_CODE
+        adc #GREEN_COLOR_CODE-1
+        sta (COLOR_RAM_PTR),y
+        dey
+        bpl .draw_bullets_loop
+
         ldy #MAX_ENEMY_TANK_COUNT+1-1
 .load_state_loop
         lda #0
@@ -228,6 +261,18 @@ main_game_loop
         bne .not_left_right
         ora #STATE_BIT_ROTATION
 .not_left_right
+        ; cheat code 'f1' - load next level
+        cpx #F1_KEY_CODE
+        bne .not_f1
+        jmp .mgl_start
+        ; jmp .break_loop
+.not_f1
+        cpx #SPACE_KEY_CODE
+        bne .not_anything
+        ;;; shoot i guess
+        jsr sfx_bullet
+        ; rts
+.not_anything
         sta player_tank_state
 
         ldy #0
@@ -335,9 +380,6 @@ main_game_loop
 
 .finish_update
         jmp .mgl_loop
-
-.break_loop
-        rts
 
 ; draw_tank_sr
         subroutine
@@ -484,3 +526,5 @@ sprite_data_end
 level_data
         include "./data/level_data.s"
 level_data_end
+
+        include "./sound_effects.s"

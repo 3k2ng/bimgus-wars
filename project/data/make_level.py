@@ -76,3 +76,4 @@ with open(f"{data_path}/levels.txt", "r") as fi:
                 + ", ".join(["${:02x}".format(b) for b in level["shots"]])
                 + "\n"
             )
+        f.write("\tdc.b $ff")
