@@ -65,6 +65,7 @@ TANK_DATA_PTR = $06 ; 2 bytes
 TANK_SCREEN_CODE = $08 ; 1 bytes
 TANK_COLOR_CODE = $09 ; 1 bytes
 TANK_STATE = $0a ; 1 bytes
+DURATION_TEMP = $0b ; 1 byte
 
 ; local variables
 LAST_KEY

@@ -14,15 +14,6 @@ FINALB  = 237                   ; final pitch of bullet
 STARTR  = 225                   ; initial pitch of rock
 FINALR  = 217                   ; final pitch of rock
 
-; KERNAL addresses
-; SB      = $900a                 ; bass
-; SA      = $900b                 ; alto
-; SS      = $900c                 ; soprano
-; SN      = $900d                 ; noise
-; SV      = $900e                 ; volume
-; JC      = $00a2                 ; jiffy clock
-
-
 ; generic cleanup
 exit_sound_effect
         lda #0                  ; shut off the speaker!
