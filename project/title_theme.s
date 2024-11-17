@@ -16,15 +16,6 @@ playsong
         ldx #0                  ; store the offset in X register
 ; main loop
 loop
-        ; check if we need to exit
-        lda CURRENT_KEY
-        cmp LAST_KEY
-        sta LAST_KEY
-        beq skip_print ; repeated input
-
-        cmp #SPACE_KEY_CODE
-        beq endsong
-skip_print
         ; play note
         lda songb,X             ; get the current bass note
         sta SB                  ; write the note to the bass speaker
@@ -36,12 +27,17 @@ skip_print
         lda duration,X          ; load accumulator with duration of current note
         beq restartloop         ; if duration is 0, exit the main loop
 ; we should not exit on this note
-        lda duration,X          ; load accumulator with duration of current note, again (?)
         clc
         adc JC                  ; accumulator now stores the desired end time
+        tay
 ; wait until jiffy clock equals the value in the accumulator (in this way, polyphony is impossible ;-;)
 inner
-        cmp JC
+        ; check if we need to exit (player input)
+        lda CURRENT_KEY
+        cmp #SPACE_KEY_CODE
+        beq endsong
+        ; check if the note duration is elapsed
+        cpy JC
         bne inner
 ; move on to the next note
         inx                     ; increment the note offset (X register)
@@ -69,9 +65,19 @@ songa ;alto
 songs ;soprano
         dc  228,231,232,235,231,224,228,0,  224,220,224,228,224,220,219,0
         dc  228,231,232,235,231,224,228,0,  224,220,224,228,231,224,228,0
+; duration
+;         dc  10, 10, 10, 10, 20, 10, 50, 20, 20, 20, 10, 10, 20, 10, 50, 40
+;         dc  10, 10, 10, 10, 20, 10, 50, 20, 20, 20, 10, 10, 20, 10, 50, 40
+;         dc  10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10
+;         dc  10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10
+;         dc  0
 duration
-        dc  10, 10, 10, 10, 20, 10, 50, 20, 20, 20, 10, 10, 20, 10, 50, 40
-        dc  10, 10, 10, 10, 20, 10, 50, 20, 20, 20, 10, 10, 20, 10, 50, 40
-        dc  10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10
-        dc  10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10
+        dc  Ne, Ne, Ne, Ne, Nq, Ne, Nh+Ne, Nq, Nq, Nq, Ne, Ne, Nq, Ne, Nh+Ne, Nh
+        dc  Ne, Ne, Ne, Ne, Nq, Ne, Nh+Ne, Nq, Nq, Nq, Ne, Ne, Nq, Ne, Nh+Ne, Nh
+        dc  Ne, Ne, Ne, Ne, Ne, Ne, Ne,    Ne, Ne, Ne, Ne, Ne, Ne, Ne, Ne,    Ne
+        dc  Ne, Ne, Ne, Ne, Ne, Ne, Ne,    Ne, Ne, Ne, Ne, Ne, Ne, Ne, Ne,    Ne
         dc  0
+
+Nh = 40
+Nq = 20
+Ne = 10
