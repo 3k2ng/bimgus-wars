@@ -62,21 +62,35 @@ endsong
         rts
 
 ; define the song
+N0 = 0
 ; note values
 songb ;bass
-        dc  145,145,145,145,195,195,186,0,  0,  186,186,186,195,195,174,0
-        dc  145,145,145,145,195,195,186,0,  0,  186,186,186,195,195,145,0
-        dc  224,228,0,  228,0,  228,224,228,0,  228,0,  228,224,228,0,  228
-        dc  224,228,0,  228,0,  228,224,228,0,  228,0,  228,219,219,0,  219
+        dc  D0,D0,D0,D0,C1,C1,Bb0,N0,N0,Bb0,Bb0,Bb0,C1,C1,G0,N0
+        dc  D0,D0,D0,D0,C1,C1,Bb0,N0,N0,Bb0,Bb0,Bb0,C1,C1,D0,N0
+        dc  C2,D2,N0,D2,N0,D2,C2, D2,N0,D2, N0, D2, C2,D2,N0,D2
+        dc  C2,D2,N0,D2,N0,D2,C2, D2,N0,D2, N0, D2, A1,A1,N0,A1
 songa ;alto
-        dc  219,219,219,219,214,214,209,0,  0,  209,209,209,214,214,228,0
-        dc  219,219,219,219,214,214,209,0,  0,  209,209,209,214,214,219,0
-        dc  224,228,0,  228,0,  228,224,228,0,  228,0,  228,231,232,0,  232
-        dc  224,228,0,  228,0,  228,224,228,0,  228,0,  228,214,219,214,219
+        dc  A1,A1,A1,A1,G1,G1,F1,N0,N0,F1,F1,F1,G1,G1,D2,N0
+        dc  A1,A1,A1,A1,G1,G1,F1,N0,N0,F1,F1,F1,G1,G1,A1,N0
+        dc  C2,D2,N0,D2,N0,D2,C2,D2,N0,D2,N0,D2,E2,F2,N0,F2
+        dc  C2,D2,N0,D2,N0,D2,C2,D2,N0,D2,N0,D2,G1,A1,G1,A1
 songs ;soprano
-        dc  228,231,232,235,231,224,228,0,  224,220,224,228,224,220,219,0
-        dc  228,231,232,235,231,224,228,0,  224,220,224,228,231,224,228,0
+        dc  D2,E2,F2,G2,E2,C2,D2,N0,C2,Bb1,C2,D2,C2,Bb1,A1,N0
+        dc  D2,E2,F2,G2,E2,C2,D2,N0,C2,Bb1,C2,D2,E2,C2, D2,N0
 ; note value constants
+D0 = 145
+G0 = 174
+Bb0 = 186
+C1 = 195
+F1 = 209
+G1 = 214
+A1 = 219
+Bb1 = 220
+C2 = 224
+D2 = 228
+E2 = 231
+F2 = 232
+G2 = 235
 
 ; duration values
 duration
@@ -84,7 +98,7 @@ duration
         dc  Ne, Ne, Ne, Ne, Nq, Ne, Nh+Ne, Nq, Nq, Nq, Ne, Ne, Nq, Ne, Nh+Ne, Nh
         dc  Ne, Ne, Ne, Ne, Ne, Ne, Ne,    Ne, Ne, Ne, Ne, Ne, Ne, Ne, Ne,    Ne
         dc  Ne, Ne, Ne, Ne, Ne, Ne, Ne,    Ne, Ne, Ne, Ne, Ne, Ne, Ne, Ne,    Ne
-        dc  0
+        dc  N0
 ; duration constants (they will be multiplied by 10 when read)
 Nh = 40
 Nq = 20
