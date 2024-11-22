@@ -25,7 +25,7 @@ start
         jsr decompress_all
 
         ; Play title theme
-        jsr playsong
+        jsr play_title_theme
 
         ; Enter game
         jsr main_game_loop

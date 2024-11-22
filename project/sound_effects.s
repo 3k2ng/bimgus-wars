@@ -14,20 +14,26 @@ FINALB  = 237                   ; final pitch of bullet
 STARTR  = 225                   ; initial pitch of rock
 FINALR  = 217                   ; final pitch of rock
 
+
 ; generic cleanup
 exit_sound_effect
         lda #0                  ; shut off the speaker!
-        sta SV
-        sta SB                  ; reset the pitches in the four channels
-        sta SA
-        sta SS
-        sta SN
-        ldx #0                  ; reset X offset
+        ; sta SV
+        ; sta SB                  ; reset the pitches in the four channels
+        ; sta SA
+        ; sta SS
+        ; sta SN
+        ; ldx #0                  ; reset X offset
         rts
-
 
 ; player explosion sound effect
 playerExplosion
+        ; lda #0
+        ; sta SA
+        ; sta SS
+        jsr reset_pitches
+        ldx #0
+playerExplosionNext
         lda velocities,X        ; get the current note velocity
 ; check if we should exit on this note
         beq exit_sound_effect   ; if volume is 0, exit the main loop
@@ -54,11 +60,18 @@ jiffyP
         cpy #FINALP             ; check current pitch against final pitch
         bne innerP              ; if we haven't hit it yet, loop the inner loop
 ; move on to the next velocity value
-        jmp playerExplosion     ; restart main loop
+        jmp playerExplosionNext ; restart main loop
 
 
 ; enemy explosion sound effect
 enemyExplosion
+        ; lda #0
+        ; sta SB
+        ; sta SA
+        ; sta SS
+        jsr reset_pitches
+        ldx #0
+enemyExplosionNext
         lda velocities,X        ; get the current note velocity
 ; check if we should exit on this note
         beq exit_sound_effect   ; if volume is 0, exit the main loop
@@ -85,11 +98,15 @@ jiffyE
         cpy #FINALE             ; check current pitch against final pitch
         bne innerE              ; if we haven't hit it yet, loop the inner loop
 ; move on to the next velocity value
-        jmp enemyExplosion      ; restart main loop
+        jmp enemyExplosionNext  ; restart main loop
 
 
 ; shoot bullet sound effect
 sfx_bullet
+        ; lda #0
+        ; sta SB
+        ; sta SN
+        jsr reset_pitches
         ldy #STARTB             ; load the first pitch into the Y register
         lda velocities          ; load a note velocity (just use the first one from the explosion velocities)
         sta SV                  ; set speaker to velocity
@@ -109,12 +126,16 @@ jiffyB
         dey                     ; decrement pitch by 1
         cpy #FINALB             ; check current pitch against final pitch
         bne innerB              ; if we haven't hit it yet, loop the inner loop
-; if we qre here, it is done
+; if we are here, it is done
         jmp exit_sound_effect   ; restart main loop
 
 
 ; shoot rock sound effect
 sfx_rock
+        ; lda #0
+        ; sta SS
+        ; sta SN
+        jsr reset_pitches
         ldy #STARTR             ; load the first pitch into the Y register
         lda velocities          ; load a note velocity (just use the first one from the explosion velocities)
         sta SV                  ; set speaker to velocity
@@ -134,7 +155,7 @@ jiffyR
         dey                     ; decrement pitch by 1
         cpy #FINALR             ; check current pitch against final pitch
         bne innerR              ; if we haven't hit it yet, loop the inner loop
-; if we qre here, it is done
+; if we are here, it is done
         jmp exit_sound_effect   ; restart main loop
 
 

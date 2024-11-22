@@ -219,6 +219,8 @@ main_game_loop
         dey
         bpl .load_state_loop
 
+        jsr play_game_theme
+        
         jmp .draw_update
 
 .mgl_loop
@@ -272,7 +274,6 @@ main_game_loop
         bne .not_anything
         ;;; shoot i guess
         jsr sfx_bullet
-        ; rts
 .not_anything
         sta player_tank_state
 
@@ -380,6 +381,7 @@ main_game_loop
         bne .draw_enemy_loop
 
 .finish_update
+        jsr update_game_theme
         jmp .mgl_loop
 
 ; draw_tank_sr
@@ -529,3 +531,4 @@ level_data
 level_data_end
 
         include "./sound_effects.s"
+        include "./game_theme.s"
