@@ -201,6 +201,7 @@ main_game_loop
 ; draw the bullets
         ldy #7
 .draw_bullets_loop
+        clc
         lda player_shot_data,y
         beq .no_bullet
         adc #BULLET_SCREEN_CODE
