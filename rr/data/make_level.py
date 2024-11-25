@@ -16,7 +16,7 @@ data_path = sys.argv[1]
 
 with open(f"{data_path}/levels.txt", "r") as fi:
     levels = []
-    cl = {"tile": [], "player": [], "enemy": [], "shots": []}
+    cl = {"tile": [], "state": [], "position": [], "shots": []}
     i = 0
     for l in fi:
         l = l.strip()
@@ -29,7 +29,8 @@ with open(f"{data_path}/levels.txt", "r") as fi:
             i += 1
         elif i < 17:  # player info
             ti = [int(c, 16) for c in l.split(" ")]
-            cl["player"] += [ti[2], ti[1] * 16 + ti[0]]
+            cl["state"] += [ti[2]]
+            cl["position"] += [ti[1] * 16 + ti[0]]
             cl["shots"] += ti[3:]
             i += 1
         elif ";" in l:
@@ -51,10 +52,11 @@ with open(f"{data_path}/levels.txt", "r") as fi:
             ]
             i = 0
             levels.append(cl)
-            cl = {"tile": [], "player": [], "enemy": [], "shots": []}
+            cl = {"tile": [], "state": [], "position": [], "shots": []}
         elif i < 25:  # enemy info
             ti = [int(c, 16) for c in l.split(" ")]
-            cl["enemy"].append([ti[2], ti[1] * 16 + ti[0]])
+            cl["state"].append(ti[2])
+            cl["position"].append(ti[1] * 16 + ti[0])
             i += 1
         else:
             print("Too many enemy info")
@@ -72,17 +74,20 @@ with open(f"{data_path}/levels.txt", "r") as fi:
                     )
                     + "\n"
                 )
+            if len(level["state"]) < 9:
+                level["state"] += [0xFF] * (9 - len(level["state"]))
+            if len(level["position"]) < 9:
+                level["position"] += [0xFF] * (9 - len(level["position"]))
             f.write(
                 "\tdc.b "
-                + ", ".join(["${:02x}".format(b) for b in level["player"]])
+                + ", ".join(["${:02x}".format(b) for b in level["state"]])
                 + "\n"
             )
-            if len(level["enemy"]) < 8:
-                level["enemy"] += [[0xFF, 0xFF]] * (8 - len(level["enemy"]))
-            for enemy in level["enemy"]:
-                f.write(
-                    "\tdc.b " + ", ".join(["${:02x}".format(b) for b in enemy]) + "\n"
-                )
+            f.write(
+                "\tdc.b "
+                + ", ".join(["${:02x}".format(b) for b in level["position"]])
+                + "\n"
+            )
             f.write(
                 "\tdc.b "
                 + ", ".join(["${:02x}".format(b) for b in level["shots"]])

@@ -2,6 +2,7 @@
 
 ; ram location
 CURRENT_KEY = $c5
+JIFFY_CLOCK = $a2 ; the only byte that matters
 
 CHARACTER_RAM = $1c00
 SCREEN_RAM = $1e00
@@ -55,22 +56,27 @@ COLOR_RAM_PTR = $04 ; 2 bytes
 ; local variables
 LAST_KEY
         ds.b 1
+LAST_JIFFY_BIT
+        ds.b 1
 ; current level data
 current_level_data
 tile_data
         ds.b 64
 tile_data_end
-player_data
+tank_state
 PLAYER_STATE
-        ds.b 1 ; %000srmRR
+        ds.b 1 ; %00sSrmRR
+enemy_state
+        ds.b 8
+tank_position
 PLAYER_POSITION
         ds.b 1 ; $yyxx
-enemy_data
-        ds.b 16 ; same as player data
-player_shots_info
+enemy_position
+        ds.b 8 ; same as player data
+player_ammo
         ds.b 2
 ; end of level data
-bullet_data
+bullet_position
 player_bullet
         ds.b 1
 enemy_bullet
@@ -159,6 +165,10 @@ main_game_loop
 
 .mgl_loop
 ; update key
+        lda PLAYER_STATE
+        and #%00010000
+        bne .on_shoot
+
         lda CURRENT_KEY
         cmp LAST_KEY
         sta LAST_KEY
@@ -176,7 +186,7 @@ main_game_loop
 
         lda PLAYER_STATE
         and #%00000100
-        bne .on_move
+        bne ._on_move
         lda PLAYER_STATE
         and #%00001000
         bne .on_rotate
@@ -193,6 +203,12 @@ main_game_loop
         bne .not_left_right
         ora #%00001000
 .not_left_right
+        cpx #SPACE_KEY_CODE
+        bne .not_anything
+        ora #%00010000
+        ldy GF_FRONT
+        sty player_bullet
+.not_anything
         sta PLAYER_STATE
 
         ldy #0
@@ -207,6 +223,41 @@ main_game_loop
 
 .skip_drawing
         jmp .finish_update
+
+._on_move
+        jmp .on_move
+
+.on_shoot
+        lda JIFFY_CLOCK
+        and #%00000100
+        cmp LAST_JIFFY_BIT
+        sta LAST_JIFFY_BIT
+        beq .skip_update_bullet
+        lda player_bullet
+        sta P2S_POSITION
+        jsr position2screen
+        lda #EMPTY_SCREEN_CODE
+        sta (SCREEN_RAM_PTR),y
+        lda player_bullet
+        sta GF_POSITION
+        lda PLAYER_STATE
+        and #3
+        sta GF_ROTATION
+        jsr get_front
+        lda GF_FRONT
+        sta player_bullet
+        sta P2S_POSITION
+        jsr position2screen
+        ldy #0
+        lda (SCREEN_RAM_PTR),y
+        bne .on_hit
+.skip_update_bullet
+        jmp .draw_update
+.on_hit
+        lda PLAYER_STATE
+        and #$f
+        sta PLAYER_STATE
+        jmp .draw_update
 
 .on_rotate
         inc PLAYER_STATE
@@ -225,7 +276,6 @@ main_game_loop
         ldy #0
         lda #EMPTY_SCREEN_CODE
         sta (SCREEN_RAM_PTR),y
-        jsr get_front
         lda GF_FRONT
         sta PLAYER_POSITION
 
@@ -235,7 +285,7 @@ main_game_loop
         lda #RED_COLOR_CODE
         sta DE_COLOR
 
-        lda #16
+        lda #8
         sta TANK_INDEX
 .draw_tank_loop
         ldy TANK_INDEX
@@ -243,17 +293,43 @@ main_game_loop
         lda #GREEN_COLOR_CODE
         sta DE_COLOR
 .not_player
-        lda player_data,y
+        lda tank_state,y
+        and #$8f
         sta DE_STATE
         bmi .skip_current_tank
-        iny
-        lda player_data,y
+        lda tank_position,y
         sta DE_POSITION
         jsr draw_entity
 .skip_current_tank
         dec TANK_INDEX
-        dec TANK_INDEX
         bpl .draw_tank_loop
+
+        lda #BULLET_N_SCREEN_CODE
+        sta DE_N_SCREEN_CODE
+        lda #RED_COLOR_CODE
+        sta DE_COLOR
+
+        lda #8
+        sta TANK_INDEX
+.draw_bullet_loop
+        ldy TANK_INDEX
+        bne .not_player_bullet
+        lda #GREEN_COLOR_CODE
+        sta DE_COLOR
+.not_player_bullet
+        lda tank_state,y
+        and #$10
+        beq .skip_current_bullet
+        lda tank_state,y
+        and #$8f
+        sta DE_STATE
+        bmi .skip_current_bullet
+        lda bullet_position,y
+        sta DE_POSITION
+        jsr draw_entity
+.skip_current_bullet
+        dec TANK_INDEX
+        bpl .draw_bullet_loop
 
 .finish_update
         jmp .mgl_loop
