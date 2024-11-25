@@ -1,6 +1,15 @@
 ; sound_effects.s
 ;
-; playing sound effects back to back
+; playing sound effects
+
+; SOUND EFFECTS PRECEDENCE (most important at top)
+        ; Player explosion
+        ; Enemy explosion
+        ; Player shoot + enemy shoot
+        ; Player movement (move fwd/rotate)
+
+; zero page variables
+
 
 ; sound effect parameters
 STARTP  = 235                   ; initial pitch of player explosion

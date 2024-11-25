@@ -2,18 +2,13 @@
 ;
 ; playing the in-game theme song
 
-SB      = $900a                 ; bass
-SA      = $900b                 ; alto
-SS      = $900c                 ; soprano
-SN      = $900d                 ; noise
-SV      = $900e                 ; volume
-JC      = $00a2                 ; jiffy clock
-
+; bitmask definitions
 NOISEM  = %00000001             ; noise mask
 BASSM   = %00000010             ; bass mask
 ALTOM   = %00000100             ; alto mask
 SOPRM   = %00001000             ; soprano mask
 
+; parameters
 INIT_V  = 8                     ; initial velocity of note
 
 ; zero page variables
