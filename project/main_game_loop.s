@@ -220,7 +220,7 @@ main_game_loop
         dey
         bpl .load_state_loop
 
-        jsr play_game_theme
+        ; jsr play_game_theme
         
         jmp .draw_update
 
@@ -274,7 +274,9 @@ main_game_loop
         cpx #SPACE_KEY_CODE
         bne .not_anything
         ;;; shoot i guess
-        jsr sfx_bullet
+        lda SFX_SHOOT
+        sta SFX_IND
+        jsr enter_sound_effect
 .not_anything
         sta player_tank_state
 
@@ -382,7 +384,7 @@ main_game_loop
         bne .draw_enemy_loop
 
 .finish_update
-        jsr update_game_theme
+        ; jsr update_game_theme
         jmp .mgl_loop
 
 ; draw_tank_sr
