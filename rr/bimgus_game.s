@@ -21,13 +21,12 @@ start
         lda #$0b
         sta $900f
 
-        jsr main_game_loop
-
+        jsr main_game
         rts
 
-        include "./main_game_loop.s"
+        include "./main_game.s"
 
-        if . >= $1e00
-        echo "ERROR: tromping on screen memory!"
+        if . >= $1c00
+        echo "ERROR: out of memory!"
         err
         endif

@@ -2,7 +2,7 @@ import sys
 
 OFF_SYMBOLS, ON_SYMBOLS = ".", "#"
 
-tank_n = """\
+tank_up = """\
 ..####..\
 ...##...\
 ##.##.##\
@@ -13,7 +13,7 @@ tank_n = """\
 ##....##\
 """
 
-tank_nw = """\
+tank_rotating_up = """\
 ..#..#..\
 .##.###.\
 ########\
@@ -24,7 +24,7 @@ tank_nw = """\
 ..##....\
 """
 
-walls = [
+wall = [
     """\
 ........\
 ........\
@@ -47,8 +47,8 @@ walls = [
 """,
     """\
 .###.##.\
-.###.###\
-.####.##\
+.#######\
+..###.##\
 ........\
 .##...##\
 ####.###\
@@ -67,18 +67,18 @@ walls = [
 """,
 ]
 
-shot = """\
+bullet_up = """\
+........\
 ........\
 ...##...\
 ..####..\
-.######.\
-.######.\
-.######.\
-.######.\
+..####..\
+..####..\
+........\
 ........\
 """
 
-shot_images = [
+ammo = [
     """\
 ........\
 ...##...\
@@ -111,92 +111,56 @@ shot_images = [
 """,
 ]
 
-IB_UP = 0
-IB_RIGHT = 1
-IB_DOWN = 2
-IB_LEFT = 3
+explosion = [
+    """\
+..#.....\
+..##.#..\
+.#######\
+..#####.\
+.#####..\
+#######.\
+..#.##..\
+.....#..\
+""",
+]
 
 
-def make_ib(sprite_in, ib_direction):
-    if ib_direction % 2 == 0:
-        upper = "." * 32 + sprite_in[:32]
-        lower = sprite_in[32:] + "." * 32
-        if ib_direction == IB_UP:
-            return [lower, upper]
-        else:
-            return [upper, lower]
-    else:
-        left = "".join(["." * 4 + sprite_in[8 * i : 8 * i + 4] for i in range(8)])
-        right = "".join(
-            [sprite_in[8 * i + 4 : 8 * (i + 1)] + "." * 4 for i in range(8)]
-        )
-        if ib_direction == IB_RIGHT:
-            return [right, left]
-        else:
-            return [left, right]
+def in_between(sprite_in):
+    upper = "." * 32 + sprite_in[:32]
+    lower = sprite_in[32:] + "." * 32
+    return [lower, upper]
 
 
-def flip_diag(sprite_in, nw_axis):
-    flipped = ""
+def rotate_left(sprite_in):
+    rotated = ""
     for i in range(64):
         x = i % 8
         y = i // 8
-        if nw_axis:
-            flipped += sprite_in[8 * x + y]
-        else:
-            flipped += sprite_in[8 * (7 - x) + 7 - y]
-    return flipped
+        rotated += sprite_in[x * 8 + 7 - y]
+    return rotated
 
 
-def flip_card(sprite_in, n_axis):
-    flipped = ""
-    for i in range(64):
-        x = i % 8
-        y = i // 8
-        if n_axis:
-            flipped += sprite_in[7 - x + y * 8]
-        else:
-            flipped += sprite_in[x + (7 - y) * 8]
-    return flipped
+def rotation(sprite_in):
+    return [
+        sprite_in,
+        rotate_left(sprite_in),
+        rotate_left(rotate_left(sprite_in)),
+        rotate_left(rotate_left(rotate_left(sprite_in))),
+    ]
 
 
 sprites = []
 
-sprites += walls
+sprites += wall
+for e in [tank_up, bullet_up]:
+    ib = in_between(e)
+    sprites += rotation(e)
+    sprites += rotation(ib[0])
+    sprites += rotation(ib[1])
+sprites += rotation(tank_rotating_up)
+sprites += ammo
+sprites += explosion
 
-tank_offset = len(sprites)
-for i in range(4):
-    if i == 0:
-        sprites += [tank_n]
-        sprites += make_ib(tank_n, i)
-    elif i % 2 == 0:
-        sprites += [flip_diag(sprites[tank_offset + 3 * i - 3], False)]
-        sprites += make_ib(sprites[tank_offset + 3 * i], i)
-    else:
-        sprites += [flip_diag(sprites[tank_offset + 3 * i - 3], True)]
-        sprites += make_ib(sprites[tank_offset + 3 * i], i)
-
-for i in range(4):
-    if i == 0:
-        sprites += [tank_nw]
-    elif i % 2 == 0:
-        sprites += [flip_card(sprites[-1], True)]
-    else:
-        sprites += [flip_card(sprites[-1], False)]
-
-shot_offset = len(sprites)
-for i in range(4):
-    if i == 0:
-        sprites += [shot]
-        sprites += make_ib(shot, i)
-    elif i % 2 == 0:
-        sprites += [flip_diag(sprites[shot_offset + 3 * i - 3], False)]
-        sprites += make_ib(sprites[shot_offset + 3 * i], i)
-    else:
-        sprites += [flip_diag(sprites[shot_offset + 3 * i - 3], True)]
-        sprites += make_ib(sprites[shot_offset + 3 * i], i)
-
-sprites += shot_images
 
 print("\nsprites\n")
 for s in sprites:

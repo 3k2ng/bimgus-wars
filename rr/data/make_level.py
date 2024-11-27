@@ -16,7 +16,7 @@ data_path = sys.argv[1]
 
 with open(f"{data_path}/levels.txt", "r") as fi:
     levels = []
-    cl = {"tile": [], "state": [], "position": [], "shots": []}
+    cl = {"tile": [], "state": [], "position": [], "type": [], "ammo": []}
     i = 0
     for l in fi:
         l = l.strip()
@@ -31,7 +31,7 @@ with open(f"{data_path}/levels.txt", "r") as fi:
             ti = [int(c, 16) for c in l.split(" ")]
             cl["state"] += [ti[2]]
             cl["position"] += [ti[1] * 16 + ti[0]]
-            cl["shots"] += ti[3:]
+            cl["ammo"] += ti[3:]
             i += 1
         elif ";" in l:
             compressed = []
@@ -43,20 +43,21 @@ with open(f"{data_path}/levels.txt", "r") as fi:
                         byte += cl["tile"][_i * 64 + _j * 4 + _k]
                     compressed.append(byte)
             cl["tile"] = compressed
-            if len(cl["shots"]) < 8:
-                cl["shots"] += [0] * (8 - len(cl["shots"]))
-            shots = cl["shots"]
-            cl["shots"] = [
-                shots[0] + shots[1] * 4 + shots[2] * 16 + shots[3] * 64,
-                shots[4] + shots[5] * 4 + shots[6] * 16 + shots[7] * 64,
+            if len(cl["ammo"]) < 8:
+                cl["ammo"] += [0] * (8 - len(cl["ammo"]))
+            ammo = cl["ammo"]
+            cl["ammo"] = [
+                ammo[0] + ammo[1] * 4 + ammo[2] * 16 + ammo[3] * 64,
+                ammo[4] + ammo[5] * 4 + ammo[6] * 16 + ammo[7] * 64,
             ]
             i = 0
             levels.append(cl)
-            cl = {"tile": [], "state": [], "position": [], "shots": []}
+            cl = {"tile": [], "state": [], "position": [], "type": [], "ammo": []}
         elif i < 25:  # enemy info
             ti = [int(c, 16) for c in l.split(" ")]
             cl["state"].append(ti[2])
             cl["position"].append(ti[1] * 16 + ti[0])
+            cl["type"].append(ti[3] + ti[4] * 4)
             i += 1
         else:
             print("Too many enemy info")
@@ -78,6 +79,8 @@ with open(f"{data_path}/levels.txt", "r") as fi:
                 level["state"] += [0xFF] * (9 - len(level["state"]))
             if len(level["position"]) < 9:
                 level["position"] += [0xFF] * (9 - len(level["position"]))
+            if len(level["type"]) < 8:
+                level["type"] += [0xFF] * (8 - len(level["type"]))
             f.write(
                 "\tdc.b "
                 + ", ".join(["${:02x}".format(b) for b in level["state"]])
@@ -90,6 +93,11 @@ with open(f"{data_path}/levels.txt", "r") as fi:
             )
             f.write(
                 "\tdc.b "
-                + ", ".join(["${:02x}".format(b) for b in level["shots"]])
+                + ", ".join(["${:02x}".format(b) for b in level["ammo"]])
+                + "\n"
+            )
+            f.write(
+                "\tdc.b "
+                + ", ".join(["${:02x}".format(b) for b in level["type"]])
                 + "\n"
             )
