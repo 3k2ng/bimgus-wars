@@ -25,9 +25,11 @@ STARTR  = 225                   ; initial pitch of rock
 FINALR  = 217                   ; final pitch of rock
 STARTM  = 215                   ; initial pitch of move
 
+SFX_SAVE_ACC = $14
 
 ; player explosion sound effect
 playerExplosion
+        sta SFX_SAVE_ACC        ; save accumulator so it can be restored at the end, just in case
         ; lda #0
         ; sta SA
         ; sta SS
@@ -65,6 +67,7 @@ jiffyP
 
 ; enemy explosion sound effect
 enemyExplosion
+        sta SFX_SAVE_ACC        ; save accumulator so it can be restored at the end, just in case
         ; lda #0
         ; sta SB
         ; sta SA
@@ -102,17 +105,12 @@ jiffyE
 
 ; generic cleanup
 exit_sound_effect
-        lda #0                  ; shut off the speaker!
-        ; sta SV
-        ; sta SB                  ; reset the pitches in the four channels
-        ; sta SA
-        ; sta SS
-        ; sta SN
-        ; ldx #0                  ; reset X offset
+        lda SFX_SAVE_ACC        ; restore accumulator
         rts
 
 ; shoot bullet sound effect
 sfx_bullet
+        sta SFX_SAVE_ACC        ; save accumulator so it can be restored at the end, just in case
         ; lda #0
         ; sta SB
         ; sta SN
@@ -140,37 +138,39 @@ jiffyB
         jmp exit_sound_effect   ; restart main loop
 
 
-; shoot rock sound effect
-sfx_rock
-        ; lda #0
-        ; sta SS
-        ; sta SN
-        jsr reset_pitches
-        ldy #STARTR             ; load the first pitch into the Y register
-        lda velocities          ; load a note velocity (just use the first one from the explosion velocities)
-        sta SV                  ; set speaker to velocity
-; inner loop (decreasing pitch)
-innerR
-        dec SV                  ; decrease velocity by 1
-        sty SA                  ; write the note to the alto channel
-        sty SB                  ; write the note to the bass channel
-; set up the jiffy waiting loop
-        lda JC                  ; load jiffy clock into accumulator
-        adc #1                  ; accumulator now stores the desired end time (one jiffy away)
-; wait one jiffy
-jiffyR
-        cmp JC
-        bne jiffyR
-; decrease pitch until it hits final pitch
-        dey                     ; decrement pitch by 1
-        cpy #FINALR             ; check current pitch against final pitch
-        bne innerR              ; if we haven't hit it yet, loop the inner loop
-; if we are here, it is done
-        jmp exit_sound_effect   ; restart main loop
+; ; shoot rock sound effect
+; sfx_rock
+;         sta SFX_SAVE_ACC        ; save accumulator so it can be restored at the end, just in case
+;         ; lda #0
+;         ; sta SS
+;         ; sta SN
+;         jsr reset_pitches
+;         ldy #STARTR             ; load the first pitch into the Y register
+;         lda velocities          ; load a note velocity (just use the first one from the explosion velocities)
+;         sta SV                  ; set speaker to velocity
+; ; inner loop (decreasing pitch)
+; innerR
+;         dec SV                  ; decrease velocity by 1
+;         sty SA                  ; write the note to the alto channel
+;         sty SB                  ; write the note to the bass channel
+; ; set up the jiffy waiting loop
+;         lda JC                  ; load jiffy clock into accumulator
+;         adc #1                  ; accumulator now stores the desired end time (one jiffy away)
+; ; wait one jiffy
+; jiffyR
+;         cmp JC
+;         bne jiffyR
+; ; decrease pitch until it hits final pitch
+;         dey                     ; decrement pitch by 1
+;         cpy #FINALR             ; check current pitch against final pitch
+;         bne innerR              ; if we haven't hit it yet, loop the inner loop
+; ; if we are here, it is done
+;         jmp exit_sound_effect   ; restart main loop
 
 
 ; player movement sound effect
 player_movement
+        sta SFX_SAVE_ACC        ; save accumulator so it can be restored at the end, just in case
         ; lda #0
         ; sta SB
         ; sta SA
