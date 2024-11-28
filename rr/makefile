@@ -1,4 +1,4 @@
-ALL = ./export/_bimgus_game.prg
+ALL = ./_bimgus_game.prg
 
 all: clean $(ALL)
 
@@ -8,11 +8,8 @@ all: clean $(ALL)
 ./data/level_data.s: ./data/make_level.py ./data/levels.txt
 	python ./data/make_level.py ./data
 
-./export/_bimgus_game.prg: ./bimgus_game.s ./main_game.s ./data/sprite_data.s ./data/level_data.s
-	rm -rf export
-	mkdir export
-	dasm $< -o$@ -lexport/$(<:.s=.lst)
+./_bimgus_game.prg: ./bimgus_game.s ./main_game.s ./data/sprite_data.s ./data/level_data.s
+	dasm $< -o$@ -l$(<:.s=.lst)
 
 clean:
-	rm -rf ./data/*.s
-	rm -rf export
+	rm -rf ./data/*.s ./_bimgus_game.prg ./bimgus_game.lst

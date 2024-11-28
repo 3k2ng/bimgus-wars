@@ -70,15 +70,18 @@ STATE = $10 ; 1 byte
 POSITION = $11 ; 1 byte
 FRONT = $12 ; 1 byte
 AMMO = $13 ; 1 byte
-NEIGHBOR_UP = $14 ; 1 byte
-NEIGHBOR_LEFT = $15 ; 1 byte
-NEIGHBOR_DOWN = $16 ; 1 byte
-NEIGHBOR_RIGHT = $17 ; 1 byte
+ROTATION = $14 ; 1 byte
+NEIGHBOR_UP = $18 ; 1 byte
+NEIGHBOR_LEFT = $19 ; 1 byte
+NEIGHBOR_DOWN = $1a ; 1 byte
+NEIGHBOR_RIGHT = $1b ; 1 byte
 
 TANK_INDEX = $50 ; 1 byte
 
 ; local variables
 KEY_LAST
+        ds.b 1
+JIFFY_BIT_LAST
         ds.b 1
 ; current level data
 level_state
@@ -140,6 +143,18 @@ main_game
         jsr draw_tile
 
 .mg_loop
+        lda PLAYER_STATE
+        and #STATE_SHOOTING
+        beq .not_shooting
+        lda JIFFY_CLOCK
+        and #%100
+        cmp JIFFY_BIT_LAST
+        sta JIFFY_BIT_LAST
+        bne .update_start
+        jmp .skip_update
+.not_shooting
+
+
         lda KEY_CURRENT
         cmp KEY_LAST
         sta KEY_LAST
@@ -179,19 +194,18 @@ level_data_end
 ; update_tank
         subroutine
 update_tank
-        ldx TANK_INDEX
-        lda tank_position,x
-        sta POSITION
-        lda tank_state,x
-        sta STATE
-        jsr front
-        ldx TANK_INDEX
-        lda tank_state,x
+        jsr load_tank
+        lda STATE
         and #STATE_ROTATING
         beq .not_rotating
         jmp .rotating
 .not_rotating
-        lda tank_state,x
+        lda STATE
+        and #STATE_SHOOTING
+        beq .not_shooting
+        jmp .shooting
+.not_shooting
+        lda STATE
         and #STATE_MOVING
         beq .not_moving
         jmp .moving
@@ -199,8 +213,7 @@ update_tank
 
         ldx TANK_INDEX
         bne .not_player
-        lda KEY_CURRENT
-        tax
+        ldx KEY_CURRENT
         lda PLAYER_STATE
         cpx #KEY_UP_DOWN
         bne .not_up_down
@@ -212,7 +225,7 @@ update_tank
 .not_left_right
         cpx #KEY_SPACE
         bne .not_space
-        ora #STATE_SHOOTING
+        ora #STATE_SHOOTING|STATE_MOVING
 .not_space
         ldx TANK_INDEX
         sta tank_state,x
@@ -231,23 +244,18 @@ update_tank
         sta tank_state,x
 .not_blocked
 
-        ldx TANK_INDEX
-        lda tank_state,x
+        jsr load_tank
+        lda STATE
         and #STATE_SHOOTING
         beq .skip_shooting
-        ldx TANK_INDEX
-        lda tank_position,x
-        sta POSITION
-        lda tank_state,x
-        sta STATE
-        jsr front
-        lda FRONT
+        lda POSITION
         sta bullet_position,x
 .skip_shooting
 
         jmp .finish_update
 
 .rotating
+        ldx TANK_INDEX
         inc tank_state,x
         lda tank_state,x
         and #STATE_ROTATION
@@ -257,15 +265,52 @@ update_tank
         ldy #0
         lda #SCREEN_EMPTY
         sta SCREEN_CURRENT
-        lda tank_position,x
-        sta POSITION
-        jsr position2screen
         jsr draw_screen
         lda FRONT
-        sta tank_position,x
         ldx TANK_INDEX
+        sta tank_position,x
         lda tank_state,x
         and #$ff^STATE_MOVING
+        sta tank_state,x
+        jmp .finish_update
+.shooting
+        jsr load_bullet
+        lda STATE
+        and #STATE_MOVING
+        bne .bullet_moving
+        jsr load_bullet
+        lda FRONT
+        sta POSITION
+        jsr position2screen
+        ldy #0
+        jsr read_screen
+        lda SCREEN_CURRENT
+        bne .on_hit
+        lda STATE
+        ora #STATE_MOVING
+        sta tank_state,x
+        jmp .finish_update
+.bullet_moving
+        ldy #0
+        lda #SCREEN_EMPTY
+        sta SCREEN_CURRENT
+        jsr draw_screen
+        lda FRONT
+        ldx TANK_INDEX
+        sta bullet_position,x
+        lda tank_state,x
+        and #$ff^STATE_MOVING
+        sta tank_state,x
+        jmp .finish_update
+.on_hit
+        jsr load_bullet
+        ldy #0
+        lda #SCREEN_EMPTY
+        sta SCREEN_CURRENT
+        jsr draw_screen
+        ldx TANK_INDEX
+        lda tank_state,x
+        and #STATE_ROTATION
         sta tank_state,x
 .finish_update
         rts
@@ -274,19 +319,7 @@ update_tank
 ; draw_tank
         subroutine
 draw_tank
-        lda #SCREEN_TANK_UP
-        sta SCREEN_CURRENT
-        lda #COLOR_RED
-        ldx TANK_INDEX
-        bne .not_player
-        lda #COLOR_GREEN
-.not_player
-        sta COLOR_CURRENT
-        lda tank_state,x
-        sta STATE
-        lda tank_position,x
-        sta POSITION
-        jsr draw_entity
+        jsr load_tank
 
         lda STATE
         and #STATE_SHOOTING
@@ -300,12 +333,24 @@ draw_tank
         lda #COLOR_GREEN
 .not_player_bullet
         sta COLOR_CURRENT
-        lda tank_state,x
+        jsr load_bullet
+        lda STATE
+        and #$ff^STATE_SHOOTING
         sta STATE
-        lda bullet_position,x
-        sta POSITION
         jsr draw_entity
 .skip_bullet
+
+        lda #SCREEN_TANK_UP
+        sta SCREEN_CURRENT
+        lda #COLOR_RED
+        ldx TANK_INDEX
+        bne .not_player
+        lda #COLOR_GREEN
+.not_player
+        sta COLOR_CURRENT
+        jsr load_tank
+        jsr draw_entity
+
         rts
 
 
@@ -313,11 +358,13 @@ draw_tank
         subroutine
 draw_entity
         clc
-        lda STATE
-        and #STATE_ROTATION
-        adc SCREEN_CURRENT
+        lda SCREEN_CURRENT
+        adc ROTATION
         sta SCREEN_CURRENT
         clc
+        lda STATE
+        and #STATE_SHOOTING
+        bne .normal
         lda STATE
         and #STATE_MOVING|STATE_ROTATING
         beq .normal
@@ -331,9 +378,7 @@ draw_entity
         jsr position2screen
         jsr draw_screen
         jsr neighbor
-        lda STATE
-        and #STATE_ROTATION
-        tax
+        ldx ROTATION
         lda NEIGHBOR_UP,x
         sta POSITION
         clc
@@ -354,16 +399,36 @@ draw_entity
         rts
 
 
-; front
-; -x-
+; load_tank
         subroutine
-front
+load_tank
+        ldx TANK_INDEX
+        lda tank_state,x
+        sta STATE
+        and #STATE_ROTATION
+        sta ROTATION
+        lda tank_position,x
+        sta POSITION
         jsr neighbor
-        lda STATE
-        and #3
-        tay
+        ldy ROTATION
         lda NEIGHBOR_UP,y
         sta FRONT
+        jsr position2screen
+        rts
+
+
+; load_bullet
+        subroutine
+load_bullet
+        jsr load_tank
+        ldx TANK_INDEX
+        lda bullet_position,x
+        sta POSITION
+        jsr neighbor
+        ldy ROTATION
+        lda NEIGHBOR_UP,y
+        sta FRONT
+        jsr position2screen
         rts
 
 
@@ -513,6 +578,17 @@ draw_screen
         sta (PTR_SCREEN),y
         lda COLOR_CURRENT
         sta (PTR_COLOR),y
+        rts
+
+
+; read_screen
+; -xY
+        subroutine
+read_screen
+        lda (PTR_SCREEN),y
+        sta SCREEN_CURRENT
+        lda (PTR_COLOR),y
+        sta COLOR_CURRENT
         rts
 
 
