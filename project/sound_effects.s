@@ -25,7 +25,7 @@ STARTR  = 225                   ; initial pitch of rock
 FINALR  = 217                   ; final pitch of rock
 STARTM  = 215                   ; initial pitch of move
 
-SFX_SAVE_ACC = $14
+SFX_SAVE_ACC = $24
 
 ; player explosion sound effect
 playerExplosion
