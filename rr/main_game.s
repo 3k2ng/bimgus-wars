@@ -227,10 +227,15 @@ update_tank
         bne .not_space
         ora #STATE_SHOOTING|STATE_MOVING
 .not_space
-        ldx TANK_INDEX
-        sta tank_state,x
+        sta PLAYER_STATE
+        jmp .check_blocked
 .not_player
+        ldx TANK_INDEX
+        lda tank_state,x
+        ora #STATE_SHOOTING|STATE_MOVING
+        sta tank_state,x
 
+.check_blocked
         lda FRONT
         sta POSITION
         jsr position2screen
@@ -249,6 +254,7 @@ update_tank
         and #STATE_SHOOTING
         beq .skip_shooting
         lda POSITION
+        ldx TANK_INDEX
         sta bullet_position,x
 .skip_shooting
 
@@ -269,8 +275,9 @@ update_tank
         lda FRONT
         ldx TANK_INDEX
         sta tank_position,x
+        ldx TANK_INDEX
         lda tank_state,x
-        and #$ff^STATE_MOVING
+        and #STATE_ROTATION
         sta tank_state,x
         jmp .finish_update
 .shooting
@@ -288,6 +295,7 @@ update_tank
         bne .on_hit
         lda STATE
         ora #STATE_MOVING
+        ldx TANK_INDEX
         sta tank_state,x
         jmp .finish_update
 .bullet_moving
@@ -300,6 +308,7 @@ update_tank
         sta bullet_position,x
         lda tank_state,x
         and #$ff^STATE_MOVING
+        ldx TANK_INDEX
         sta tank_state,x
         jmp .finish_update
 .on_hit
