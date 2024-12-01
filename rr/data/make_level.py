@@ -62,42 +62,16 @@ with open(f"{data_path}/levels.txt", "r") as fi:
         else:
             print("Too many enemy info")
 
-    with open(f"{data_path}/level_data.s", "w") as f:
+    with open(f"{data_path}/level_data.bin", "wb") as f:
         for level in levels:
-            for i in range(4):
-                f.write(
-                    "\tdc.b "
-                    + ", ".join(
-                        [
-                            "${:02x}".format(b)
-                            for b in level["tile"][16 * i : 16 * (i + 1)]
-                        ]
-                    )
-                    + "\n"
-                )
             if len(level["state"]) < 9:
                 level["state"] += [0xFF] * (9 - len(level["state"]))
             if len(level["position"]) < 9:
                 level["position"] += [0xFF] * (9 - len(level["position"]))
             if len(level["type"]) < 8:
                 level["type"] += [0xFF] * (8 - len(level["type"]))
-            f.write(
-                "\tdc.b "
-                + ", ".join(["${:02x}".format(b) for b in level["state"]])
-                + "\n"
-            )
-            f.write(
-                "\tdc.b "
-                + ", ".join(["${:02x}".format(b) for b in level["position"]])
-                + "\n"
-            )
-            f.write(
-                "\tdc.b "
-                + ", ".join(["${:02x}".format(b) for b in level["ammo"]])
-                + "\n"
-            )
-            f.write(
-                "\tdc.b "
-                + ", ".join(["${:02x}".format(b) for b in level["type"]])
-                + "\n"
-            )
+            f.write(bytearray(level["tile"]))
+            f.write(bytearray(level["state"]))
+            f.write(bytearray(level["position"]))
+            f.write(bytearray(level["ammo"]))
+            f.write(bytearray(level["type"]))

@@ -183,11 +183,11 @@ main_game
         rts
 
 sprite_data
-        include "./data/sprite_data.s"
+        incbin "./data/sprite_data.bin"
 sprite_data_end
 
 level_data
-        include "./data/level_data.s"
+        incbin "./data/level_data.bin"
 level_data_end
 
 

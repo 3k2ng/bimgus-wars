@@ -170,22 +170,25 @@ for s in sprites:
 
 data_path = sys.argv[1]
 
-with open(f"{data_path}/sprite_data.s", "w") as f:
+with open(f"{data_path}/sprite_data.bin", "wb") as f:
     for s in sprites:
-        char_bytes = [
-            int(
-                "".join(
-                    [
-                        "0" if c in OFF_SYMBOLS else "1" if c in ON_SYMBOLS else ""
-                        for c in s[8 * i : 8 * (i + 1)]
-                    ]
-                ),
-                2,
-            )
-            for i in range(8)
-        ]
         f.write(
-            "\tdc.b "
-            + ", ".join(["${:02x}".format(byte) for byte in char_bytes])
-            + "\n"
+            bytearray(
+                [
+                    int(
+                        "".join(
+                            [
+                                (
+                                    "0"
+                                    if c in OFF_SYMBOLS
+                                    else "1" if c in ON_SYMBOLS else ""
+                                )
+                                for c in s[8 * i : 8 * (i + 1)]
+                            ]
+                        ),
+                        2,
+                    )
+                    for i in range(8)
+                ]
+            )
         )
