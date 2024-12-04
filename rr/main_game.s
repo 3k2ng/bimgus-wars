@@ -202,21 +202,34 @@ main_game
         bmi .skip_current_collision
         lda tank_position,x
         cmp BULLET_POSITION
-        bne .not_collide
+        bne .not_collide_tank
         lda #$ff
         sta tank_state,x
         lda TANK_STATE
         and #STATE_ROTATION
         sta TANK_STATE
-
         lda BULLET_POSITION
         sta POSITION
-        jsr position2screen
-        lda #SCREEN_EMPTY
-        sta SCREEN_CURRENT
-        ldy #0
-        jsr draw_screen
-.not_collide
+        jsr empty_position
+        jmp .done_collision
+.not_collide_tank
+        lda tank_state,x
+        and #STATE_SHOOTING
+        beq .not_collide_bullet
+        lda bullet_position,x
+        cmp BULLET_POSITION
+        bne .not_collide_bullet
+        lda tank_state,x
+        and #$ff^(STATE_SHOOTING|STATE_MOVING)
+        sta tank_state,x
+        lda TANK_STATE
+        and #STATE_ROTATION
+        sta TANK_STATE
+        lda BULLET_POSITION
+        sta POSITION
+        jsr empty_position
+.not_collide_bullet
+.done_collision
 .skip_current_collision
         dex
         bpl .collision_inner_loop
@@ -287,7 +300,11 @@ move_tank
         ora #STATE_SHOOTING|STATE_MOVING
 .not_space
         sta TANK_STATE
+        jmp .check_front
 .not_player
+        lda TANK_STATE
+        ora #STATE_SHOOTING|STATE_MOVING
+        sta TANK_STATE
 
 .check_front
         lda TANK_FRONT
@@ -296,8 +313,13 @@ move_tank
 
         lda TARGET
         beq .not_blocked
+        bpl .breakable
         lda TANK_STATE
         and #$ff^(STATE_MOVING|STATE_SHOOTING)
+        sta TANK_STATE
+.breakable
+        lda TANK_STATE
+        and #$ff^STATE_MOVING
         sta TANK_STATE
 .not_blocked
 
