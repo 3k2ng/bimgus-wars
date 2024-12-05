@@ -95,6 +95,8 @@ OTHER_BULLET_POSITION = $5a ; 1 byte
 
 TARGET = $60 ; 1 byte
 
+ENEMY_LEFT = $70
+
 ; local variables
 KEY_LAST
         ds.b 1
@@ -141,6 +143,7 @@ main_game
         sta PTR_COPY_DST+1
         jsr copy
 
+.load_level
         jsr clear_screen
 
         lda #<level_data
@@ -158,6 +161,10 @@ main_game
         jsr copy
 
         jsr draw_tile
+        lda #$40
+        sta KEY_CURRENT
+        sta KEY_LAST
+        jmp .update_start
 
 .mg_loop
         lda PLAYER_STATE
@@ -182,17 +189,29 @@ main_game
 
         lda #$ff
         sta OTHER_TANK_INDEX
+        lda #0
+        sta TANK_INDEX
+        jsr load_tank
+        lda TANK_STATE
+        bmi .load_level ; game_over
+
+        lda #0
+        sta ENEMY_LEFT
         lda #8
         sta TANK_INDEX
 .move_loop
         jsr load_tank
         lda TANK_STATE
         bmi .skip_move_tank
+        inc ENEMY_LEFT
         jsr move_tank
         jsr store_tank
 .skip_move_tank
         dec TANK_INDEX
         bpl .move_loop
+
+        dec ENEMY_LEFT
+        beq .load_level ; you win
 
         lda #8
         sta TANK_INDEX
@@ -277,6 +296,7 @@ move_tank
 
         ldx TANK_INDEX
         bne .not_player
+.read_key
         ldx KEY_CURRENT
         lda TANK_STATE
         cpx #KEY_UP_DOWN
