@@ -325,11 +325,12 @@ move_tank
 
         lda TARGET
         beq .not_blocked
-        bpl .breakable
+        cmp #SCREEN_WALL
+        bne .not_wall
         lda TANK_STATE
         and #$ff^(STATE_MOVING|STATE_SHOOTING)
         sta TANK_STATE
-.breakable
+.not_wall
         lda TANK_STATE
         and #$ff^STATE_MOVING
         sta TANK_STATE
@@ -378,7 +379,9 @@ move_tank
         sta POSITION
         jsr read_target
         lda TARGET
-        bpl .no_hit
+        cmp #SCREEN_CRACK
+        bne .no_crack
+        jsr empty_position
         lda TANK_STATE
         and #$ff^STATE_SHOOTING
         sta TANK_STATE
@@ -386,7 +389,18 @@ move_tank
         sta POSITION
         jsr empty_position
         jmp .finish_moving
-.no_hit
+.no_crack
+        lda TARGET
+        cmp #SCREEN_WALL
+        bne .no_wall
+        lda TANK_STATE
+        and #$ff^STATE_SHOOTING
+        sta TANK_STATE
+        lda BULLET_POSITION
+        sta POSITION
+        jsr empty_position
+        jmp .finish_moving
+.no_wall
         lda TANK_STATE
         ora #STATE_MOVING
         sta TANK_STATE
@@ -645,14 +659,6 @@ read_target
         jsr position2screen
         ldy #0
         lda (PTR_SCREEN),y
-        beq .empty
-        cmp #SCREEN_WALL
-        beq .wall
-        lda #1
-        bne .empty ; finish by saving target
-.wall
-        lda #$ff
-.empty
         sta TARGET
         rts
 
