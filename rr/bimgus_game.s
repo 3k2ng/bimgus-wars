@@ -21,8 +21,12 @@ start
         lda #$0b
         sta $900f
 
+        jsr play_title_theme
+
         jsr main_game
         rts
+
+        include "./title_theme.s"
 
         include "./main_game.s"
 
