@@ -43,7 +43,7 @@ STATE_ROTATION = %11
 STATE_MOVING = %100
 STATE_ROTATING = %1000
 STATE_SHOOTING = %10000
-STATE_CATAPULT = %100000
+STATE_TO_SHOOT = %100000
 
 ; offsets
 OFFSET_IB_LOWER = 4
@@ -63,8 +63,10 @@ TEMP = $ff
 ; zp
 PTR_SCREEN = $00 ; 2 bytes
 PTR_COLOR = $02 ; 2 bytes
-SCREEN_CURRENT = $04
-COLOR_CURRENT = $05
+SCREEN_CURRENT = $04 ; 1 byte
+COLOR_CURRENT = $05 ; 1 byte
+
+SKIP_FRAME = $0f ; 1 byte
 
 ; used for draw and stuff
 STATE = $10 ; 1 byte
@@ -84,7 +86,8 @@ TANK_AMMO = $52 ; 1 byte
 BULLET_POSITION = $53 ; 1 byte
 TANK_FRONT = $54 ; 1 byte
 BULLET_FRONT = $55 ; 1 byte
-TANK_DETAIL = $56 ; 1 byte
+BULLET_BEHIND = $56 ; 1 byte
+TANK_DETAIL = $57 ; 1 byte
 
 ; for nested loop
 OTHER_TANK_INDEX = $5e ; 1 byte
@@ -93,6 +96,8 @@ OTHER_TANK_POSITION = $59 ; 1 byte
 OTHER_BULLET_POSITION = $5a ; 1 byte
 
 TARGET = $60 ; 1 byte
+
+ENEMY_LEFT = $70
 
 ; local variables
 KEY_LAST
@@ -140,6 +145,7 @@ main_game
         sta PTR_COPY_DST+1
         jsr copy
 
+.load_level
         jsr clear_screen
 
         lda #<level_data
@@ -157,6 +163,10 @@ main_game
         jsr copy
 
         jsr draw_tile
+        lda #$40
+        sta KEY_CURRENT
+        sta KEY_LAST
+        jmp .update_start
 
 .mg_loop
         lda PLAYER_STATE
@@ -179,17 +189,33 @@ main_game
 
 .update_start
 
+        lda #$ff
+        sta OTHER_TANK_INDEX
+        lda #0
+        sta TANK_INDEX
+        jsr load_tank
+        lda TANK_STATE
+        bmi .load_level ; game_over
+
+        lda #0
+        sta ENEMY_LEFT
         lda #8
         sta TANK_INDEX
 .move_loop
         jsr load_tank
         lda TANK_STATE
         bmi .skip_move_tank
+        inc ENEMY_LEFT
         jsr move_tank
         jsr store_tank
 .skip_move_tank
         dec TANK_INDEX
         bpl .move_loop
+
+        dec ENEMY_LEFT
+        bne .no_win
+        jmp .load_level ; you win
+.no_win
 
         lda #8
         sta TANK_INDEX
@@ -204,7 +230,6 @@ main_game
         dec TANK_INDEX
         bpl .collide_tank_loop
 
-
         lda #8
         sta TANK_INDEX
 .collide_bullet_loop
@@ -217,7 +242,6 @@ main_game
 .skip_collide_bullet
         dec TANK_INDEX
         bpl .collide_bullet_loop
-
 
         lda #8
         sta TANK_INDEX
@@ -262,9 +286,19 @@ move_tank
         beq .not_moving
         jmp .moving
 .not_moving
+        lda TANK_STATE
+        and #STATE_TO_SHOOT
+        beq .not_to_shoot
+        lda TANK_STATE
+        and #$ff^STATE_TO_SHOOT
+        ora #STATE_SHOOTING|STATE_MOVING
+        sta TANK_STATE
+        jmp .check_front
+.not_to_shoot
 
         ldx TANK_INDEX
         bne .not_player
+.read_key
         ldx KEY_CURRENT
         lda TANK_STATE
         cpx #KEY_UP_DOWN
@@ -283,7 +317,7 @@ move_tank
         jmp .check_front
 .not_player
         lda TANK_STATE
-        ora #STATE_SHOOTING|STATE_MOVING
+        ora #STATE_TO_SHOOT
         sta TANK_STATE
 
 .check_front
@@ -293,11 +327,12 @@ move_tank
 
         lda TARGET
         beq .not_blocked
-        bpl .breakable
+        cmp #SCREEN_WALL
+        bne .not_wall
         lda TANK_STATE
         and #$ff^(STATE_MOVING|STATE_SHOOTING)
         sta TANK_STATE
-.breakable
+.not_wall
         lda TANK_STATE
         and #$ff^STATE_MOVING
         sta TANK_STATE
@@ -348,7 +383,9 @@ move_tank
         sta POSITION
         jsr read_target
         lda TARGET
-        bpl .no_hit
+        cmp #SCREEN_CRACK
+        bne .no_crack
+        jsr empty_position
         lda TANK_STATE
         and #$ff^STATE_SHOOTING
         sta TANK_STATE
@@ -357,7 +394,18 @@ move_tank
         jsr empty_position
         jsr sfx_bullet
         jmp .finish_moving
-.no_hit
+.no_crack
+        lda TARGET
+        cmp #SCREEN_WALL
+        bne .no_wall
+        lda TANK_STATE
+        and #$ff^STATE_SHOOTING
+        sta TANK_STATE
+        lda BULLET_POSITION
+        sta POSITION
+        jsr empty_position
+        jmp .finish_moving
+.no_wall
         lda TANK_STATE
         ora #STATE_MOVING
         sta TANK_STATE
@@ -430,17 +478,23 @@ collide_bullet
         beq .skip_current_tank ; tank not shooting
         lda OTHER_BULLET_POSITION
         cmp BULLET_POSITION
-        bne .not_collide_bullet ; bullet does not collide
+        beq .collide_bullet ; bullet does not collide
+        cmp BULLET_BEHIND
+        beq .collide_bullet ; bullet does not collide
+        jmp .skip_current_tank
+.collide_bullet
         lda OTHER_TANK_STATE
         and #STATE_ROTATION
         sta OTHER_TANK_STATE
         lda TANK_STATE
         and #STATE_ROTATION
         sta TANK_STATE
+        lda OTHER_BULLET_POSITION
+        sta POSITION
+        jsr empty_position
         lda BULLET_POSITION
         sta POSITION
         jsr empty_position
-.not_collide_bullet
         jsr store_tank
 .skip_current_tank
         dec OTHER_TANK_INDEX
@@ -519,15 +573,25 @@ load_tank
         lda NEIGHBOR_UP,x
         sta BULLET_FRONT
 
+        inx
+        inx
+        txa
+        and #3
+        tax
+        lda NEIGHBOR_UP,x
+        sta BULLET_BEHIND
+
         ; TODO: add ammo and details loading
 
         ldx OTHER_TANK_INDEX
+        bmi .skip_other_tank
         lda tank_state,x
         sta OTHER_TANK_STATE
         lda tank_position,x
         sta OTHER_TANK_POSITION
         lda bullet_position,x
         sta OTHER_BULLET_POSITION
+.skip_other_tank
         rts
 
         subroutine
@@ -542,12 +606,14 @@ store_tank
         sta bullet_position,x
 
         ldx OTHER_TANK_INDEX
+        bmi .skip_other_tank
         lda OTHER_TANK_STATE
         sta tank_state,x
         lda OTHER_TANK_POSITION
         sta tank_position,x
         lda OTHER_BULLET_POSITION
         sta bullet_position,x
+.skip_other_tank
         rts
 
 
@@ -601,14 +667,6 @@ read_target
         jsr position2screen
         ldy #0
         lda (PTR_SCREEN),y
-        beq .empty
-        cmp #SCREEN_WALL
-        beq .wall
-        lda #1
-        bne .empty ; finish by saving target
-.wall
-        lda #$ff
-.empty
         sta TARGET
         rts
 
