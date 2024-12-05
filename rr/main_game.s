@@ -63,8 +63,10 @@ TEMP = $ff
 ; zp
 PTR_SCREEN = $00 ; 2 bytes
 PTR_COLOR = $02 ; 2 bytes
-SCREEN_CURRENT = $04
-COLOR_CURRENT = $05
+SCREEN_CURRENT = $04 ; 1 byte
+COLOR_CURRENT = $05 ; 1 byte
+
+SKIP_FRAME = $0f ; 1 byte
 
 ; used for draw and stuff
 STATE = $10 ; 1 byte
@@ -84,8 +86,7 @@ TANK_AMMO = $52 ; 1 byte
 BULLET_POSITION = $53 ; 1 byte
 TANK_FRONT = $54 ; 1 byte
 BULLET_FRONT = $55 ; 1 byte
-BULLET_BEHIND = $56 ; 1 byte
-TANK_DETAIL = $57 ; 1 byte
+TANK_DETAIL = $56 ; 1 byte
 
 ; for nested loop
 OTHER_TANK_INDEX = $5e ; 1 byte
@@ -211,7 +212,9 @@ main_game
         bpl .move_loop
 
         dec ENEMY_LEFT
-        beq .load_level ; you win
+        bne .no_win
+        jmp .load_level ; you win
+.no_win
 
         lda #8
         sta TANK_INDEX
@@ -226,7 +229,6 @@ main_game
         dec TANK_INDEX
         bpl .collide_tank_loop
 
-
         lda #8
         sta TANK_INDEX
 .collide_bullet_loop
@@ -239,7 +241,6 @@ main_game
 .skip_collide_bullet
         dec TANK_INDEX
         bpl .collide_bullet_loop
-
 
         lda #8
         sta TANK_INDEX
@@ -474,7 +475,7 @@ collide_bullet
         lda OTHER_BULLET_POSITION
         cmp BULLET_POSITION
         beq .collide_bullet ; bullet does not collide
-        cmp BULLET_BEHIND
+        cmp BULLET_FRONT
         beq .collide_bullet ; bullet does not collide
         jmp .skip_current_tank
 .collide_bullet
@@ -484,6 +485,9 @@ collide_bullet
         lda TANK_STATE
         and #STATE_ROTATION
         sta TANK_STATE
+        lda OTHER_BULLET_POSITION
+        sta POSITION
+        jsr empty_position
         lda BULLET_POSITION
         sta POSITION
         jsr empty_position
@@ -564,14 +568,6 @@ load_tank
         ldx ROTATION
         lda NEIGHBOR_UP,x
         sta BULLET_FRONT
-
-        inx
-        inx
-        txa
-        and #3
-        tax
-        lda NEIGHBOR_UP,x
-        sta BULLET_BEHIND
 
         ; TODO: add ammo and details loading
 
