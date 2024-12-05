@@ -21,10 +21,15 @@ start
         lda #$0b
         sta $900f
 
+        ; Display title screen
+        jsr decompress_all
+
         jsr play_title_theme
 
         jsr main_game
         rts
+
+        include "./title_screen_zx02.s"
 
         include "./title_theme.s"
 

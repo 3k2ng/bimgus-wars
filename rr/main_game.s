@@ -148,6 +148,8 @@ main_game
 .load_level
         jsr clear_screen
 
+        jsr reset_sfx_bitmask
+
         lda #<level_data
         sta PTR_COPY_SRC
         lda #>level_data
@@ -188,6 +190,8 @@ main_game
         jmp .skip_update
 
 .update_start
+
+        jsr reset_sfx_bitmask
 
         lda #$ff
         sta OTHER_TANK_INDEX
@@ -303,14 +307,17 @@ move_tank
         lda TANK_STATE
         cpx #KEY_UP_DOWN
         bne .not_up_down
+        jsr player_movement
         ora #STATE_MOVING
 .not_up_down
         cpx #KEY_LEFT_RIGHT
         bne .not_left_right
+        jsr player_movement
         ora #STATE_ROTATING
 .not_left_right
         cpx #KEY_SPACE
         bne .not_space
+        jsr sfx_bullet
         ora #STATE_SHOOTING|STATE_MOVING
 .not_space
         sta TANK_STATE
@@ -363,7 +370,6 @@ move_tank
         lda TANK_STATE
         and #STATE_ROTATION
         sta TANK_STATE
-        jsr player_movement
         jmp .finish_moving
 
 .rotating
@@ -371,7 +377,6 @@ move_tank
         lda TANK_STATE
         and #STATE_ROTATION
         sta TANK_STATE
-        jsr player_movement
         jmp .finish_moving
 
 .shooting
@@ -392,7 +397,6 @@ move_tank
         lda BULLET_POSITION
         sta POSITION
         jsr empty_position
-        jsr sfx_bullet
         jmp .finish_moving
 .no_crack
         lda TARGET
@@ -455,6 +459,7 @@ collide_tank
         lda TANK_STATE
         and #STATE_ROTATION
         sta TANK_STATE
+        jsr playerExplosion
 .not_collide_tank
         jsr store_tank
 .skip_current_tank
