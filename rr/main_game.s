@@ -328,6 +328,7 @@ move_tank
         lda TANK_STATE
         and #STATE_ROTATION
         sta TANK_STATE
+        jsr player_movement
         jmp .finish_moving
 
 .rotating
@@ -335,6 +336,7 @@ move_tank
         lda TANK_STATE
         and #STATE_ROTATION
         sta TANK_STATE
+        jsr player_movement
         jmp .finish_moving
 
 .shooting
@@ -353,6 +355,7 @@ move_tank
         lda BULLET_POSITION
         sta POSITION
         jsr empty_position
+        jsr sfx_bullet
         jmp .finish_moving
 .no_hit
         lda TANK_STATE

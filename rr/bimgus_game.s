@@ -30,6 +30,8 @@ start
 
         include "./main_game.s"
 
+        include "./sound_effects.s"
+
         if . >= $1c00
         echo "ERROR: out of memory!"
         err
