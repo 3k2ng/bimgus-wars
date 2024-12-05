@@ -86,7 +86,8 @@ TANK_AMMO = $52 ; 1 byte
 BULLET_POSITION = $53 ; 1 byte
 TANK_FRONT = $54 ; 1 byte
 BULLET_FRONT = $55 ; 1 byte
-TANK_DETAIL = $56 ; 1 byte
+BULLET_BEHIND = $56 ; 1 byte
+TANK_DETAIL = $57 ; 1 byte
 
 ; for nested loop
 OTHER_TANK_INDEX = $5e ; 1 byte
@@ -475,7 +476,7 @@ collide_bullet
         lda OTHER_BULLET_POSITION
         cmp BULLET_POSITION
         beq .collide_bullet ; bullet does not collide
-        cmp BULLET_FRONT
+        cmp BULLET_BEHIND
         beq .collide_bullet ; bullet does not collide
         jmp .skip_current_tank
 .collide_bullet
@@ -568,6 +569,14 @@ load_tank
         ldx ROTATION
         lda NEIGHBOR_UP,x
         sta BULLET_FRONT
+
+        inx
+        inx
+        txa
+        and #3
+        tax
+        lda NEIGHBOR_UP,x
+        sta BULLET_BEHIND
 
         ; TODO: add ammo and details loading
 
