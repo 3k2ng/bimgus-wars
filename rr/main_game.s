@@ -86,6 +86,12 @@ TANK_FRONT = $54 ; 1 byte
 BULLET_FRONT = $55 ; 1 byte
 TANK_DETAIL = $56 ; 1 byte
 
+; for nested loop
+OTHER_TANK_INDEX = $5e ; 1 byte
+OTHER_TANK_STATE = $58 ; 1 byte
+OTHER_TANK_POSITION = $59 ; 1 byte
+OTHER_BULLET_POSITION = $5a ; 1 byte
+
 TARGET = $60 ; 1 byte
 
 ; local variables
@@ -187,57 +193,31 @@ main_game
 
         lda #8
         sta TANK_INDEX
-.collision_loop
+.collide_tank_loop
         jsr load_tank
         lda TANK_STATE
-        bmi .skip_collide_tank
+        bmi .skip_collide_tank ; tank not exist
         and #STATE_SHOOTING
-        beq .skip_collide_tank
-
-        ldx #8
-.collision_inner_loop
-        cpx TANK_INDEX
-        beq .skip_current_collision
-        lda tank_state,x
-        bmi .skip_current_collision
-        lda tank_position,x
-        cmp BULLET_POSITION
-        bne .not_collide_tank
-        lda #$ff
-        sta tank_state,x
-        lda TANK_STATE
-        and #STATE_ROTATION
-        sta TANK_STATE
-        lda BULLET_POSITION
-        sta POSITION
-        jsr empty_position
-        jmp .done_collision
-.not_collide_tank
-        lda tank_state,x
-        and #STATE_SHOOTING
-        beq .not_collide_bullet
-        lda bullet_position,x
-        cmp BULLET_POSITION
-        bne .not_collide_bullet
-        lda tank_state,x
-        and #$ff^(STATE_SHOOTING|STATE_MOVING)
-        sta tank_state,x
-        lda TANK_STATE
-        and #STATE_ROTATION
-        sta TANK_STATE
-        lda BULLET_POSITION
-        sta POSITION
-        jsr empty_position
-.not_collide_bullet
-.done_collision
-.skip_current_collision
-        dex
-        bpl .collision_inner_loop
-
-        jsr store_tank
+        beq .skip_collide_tank ; not shooting
+        jsr collide_tank
 .skip_collide_tank
         dec TANK_INDEX
-        bpl .collision_loop
+        bpl .collide_tank_loop
+
+
+        lda #8
+        sta TANK_INDEX
+.collide_bullet_loop
+        jsr load_tank
+        lda TANK_STATE
+        bmi .skip_collide_bullet ; tank not exist
+        and #STATE_SHOOTING
+        beq .skip_collide_bullet ; not shooting
+        jsr collide_bullet
+.skip_collide_bullet
+        dec TANK_INDEX
+        bpl .collide_bullet_loop
+
 
         lda #8
         sta TANK_INDEX
@@ -396,6 +376,76 @@ move_tank
 
 
         subroutine
+collide_tank
+        lda #8
+        sta OTHER_TANK_INDEX
+.inner_collision_loop
+        jsr load_tank
+        lda OTHER_TANK_INDEX
+        cmp TANK_INDEX
+        beq .skip_current_tank ; same tank
+        lda OTHER_TANK_STATE
+        bmi .skip_current_tank ; tank not exist
+        lda OTHER_TANK_POSITION
+        cmp BULLET_POSITION
+        bne .not_collide_tank ; tank does not collide
+        lda OTHER_TANK_STATE
+        and #STATE_SHOOTING
+        beq .shot_tank_not_shooting
+        lda OTHER_BULLET_POSITION
+        sta POSITION
+        jsr empty_position
+.shot_tank_not_shooting
+        lda #$ff
+        sta OTHER_TANK_STATE
+        lda OTHER_TANK_POSITION
+        sta POSITION
+        jsr empty_position
+        lda TANK_STATE
+        and #STATE_ROTATION
+        sta TANK_STATE
+.not_collide_tank
+        jsr store_tank
+.skip_current_tank
+        dec OTHER_TANK_INDEX
+        bpl .inner_collision_loop
+        rts
+
+
+        subroutine
+collide_bullet
+        lda #8
+        sta OTHER_TANK_INDEX
+.inner_collision_loop
+        jsr load_tank
+        lda OTHER_TANK_INDEX
+        cmp TANK_INDEX
+        beq .skip_current_tank ; same tank
+        lda OTHER_TANK_STATE
+        bmi .skip_current_tank ; tank not exist
+        and #STATE_SHOOTING
+        beq .skip_current_tank ; tank not shooting
+        lda OTHER_BULLET_POSITION
+        cmp BULLET_POSITION
+        bne .not_collide_bullet ; bullet does not collide
+        lda OTHER_TANK_STATE
+        and #STATE_ROTATION
+        sta OTHER_TANK_STATE
+        lda TANK_STATE
+        and #STATE_ROTATION
+        sta TANK_STATE
+        lda BULLET_POSITION
+        sta POSITION
+        jsr empty_position
+.not_collide_bullet
+        jsr store_tank
+.skip_current_tank
+        dec OTHER_TANK_INDEX
+        bpl .inner_collision_loop
+        rts
+
+
+        subroutine
 draw_tank
 
         lda #SCREEN_BULLET_UP
@@ -443,12 +493,14 @@ load_tank
         ldx TANK_INDEX
         lda tank_state,x
         sta TANK_STATE
-        and #STATE_ROTATION
-        sta ROTATION
         lda tank_position,x
         sta TANK_POSITION
         lda bullet_position,x
         sta BULLET_POSITION
+
+        lda TANK_STATE
+        and #STATE_ROTATION
+        sta ROTATION
 
         lda TANK_POSITION
         sta POSITION
@@ -465,6 +517,14 @@ load_tank
         sta BULLET_FRONT
 
         ; TODO: add ammo and details loading
+
+        ldx OTHER_TANK_INDEX
+        lda tank_state,x
+        sta OTHER_TANK_STATE
+        lda tank_position,x
+        sta OTHER_TANK_POSITION
+        lda bullet_position,x
+        sta OTHER_BULLET_POSITION
         rts
 
         subroutine
@@ -476,6 +536,14 @@ store_tank
         lda TANK_POSITION
         sta tank_position,x
         lda BULLET_POSITION
+        sta bullet_position,x
+
+        ldx OTHER_TANK_INDEX
+        lda OTHER_TANK_STATE
+        sta tank_state,x
+        lda OTHER_TANK_POSITION
+        sta tank_position,x
+        lda OTHER_BULLET_POSITION
         sta bullet_position,x
         rts
 
