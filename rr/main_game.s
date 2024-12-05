@@ -43,7 +43,7 @@ STATE_ROTATION = %11
 STATE_MOVING = %100
 STATE_ROTATING = %1000
 STATE_SHOOTING = %10000
-STATE_CATAPULT = %100000
+STATE_TO_SHOOT = %100000
 
 ; offsets
 OFFSET_IB_LOWER = 4
@@ -179,6 +179,8 @@ main_game
 
 .update_start
 
+        lda #$ff
+        sta OTHER_TANK_INDEX
         lda #8
         sta TANK_INDEX
 .move_loop
@@ -262,6 +264,15 @@ move_tank
         beq .not_moving
         jmp .moving
 .not_moving
+        lda TANK_STATE
+        and #STATE_TO_SHOOT
+        beq .not_to_shoot
+        lda TANK_STATE
+        and #$ff^STATE_TO_SHOOT
+        ora #STATE_SHOOTING|STATE_MOVING
+        sta TANK_STATE
+        jmp .check_front
+.not_to_shoot
 
         ldx TANK_INDEX
         bne .not_player
@@ -283,7 +294,7 @@ move_tank
         jmp .check_front
 .not_player
         lda TANK_STATE
-        ora #STATE_SHOOTING|STATE_MOVING
+        ora #STATE_TO_SHOOT
         sta TANK_STATE
 
 .check_front
@@ -519,12 +530,14 @@ load_tank
         ; TODO: add ammo and details loading
 
         ldx OTHER_TANK_INDEX
+        bmi .skip_other_tank
         lda tank_state,x
         sta OTHER_TANK_STATE
         lda tank_position,x
         sta OTHER_TANK_POSITION
         lda bullet_position,x
         sta OTHER_BULLET_POSITION
+.skip_other_tank
         rts
 
         subroutine
@@ -539,12 +552,14 @@ store_tank
         sta bullet_position,x
 
         ldx OTHER_TANK_INDEX
+        bmi .skip_other_tank
         lda OTHER_TANK_STATE
         sta tank_state,x
         lda OTHER_TANK_POSITION
         sta tank_position,x
         lda OTHER_BULLET_POSITION
         sta bullet_position,x
+.skip_other_tank
         rts
 
 
