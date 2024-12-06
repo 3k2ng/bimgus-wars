@@ -16,7 +16,7 @@ data_path = sys.argv[1]
 
 with open(f"{data_path}/levels.txt", "r") as fi:
     levels = []
-    cl = {"tile": [], "state": [], "position": [], "type": [], "ammo": []}
+    cl = {"tile": [], "state": [], "position": [], "type": [], "ammo": 0}
     i = 0
     for l in fi:
         l = l.strip()
@@ -31,7 +31,7 @@ with open(f"{data_path}/levels.txt", "r") as fi:
             ti = [int(c, 16) for c in l.split(" ")]
             cl["state"] += [ti[2]]
             cl["position"] += [ti[1] * 16 + ti[0]]
-            cl["ammo"] += ti[3:]
+            cl["ammo"] += ti[3]
             i += 1
         elif ";" in l:
             compressed = []
@@ -43,21 +43,14 @@ with open(f"{data_path}/levels.txt", "r") as fi:
                         byte += cl["tile"][_i * 64 + _j * 4 + _k]
                     compressed.append(byte)
             cl["tile"] = compressed
-            if len(cl["ammo"]) < 8:
-                cl["ammo"] += [0] * (8 - len(cl["ammo"]))
-            ammo = cl["ammo"]
-            cl["ammo"] = [
-                ammo[0] + ammo[1] * 4 + ammo[2] * 16 + ammo[3] * 64,
-                ammo[4] + ammo[5] * 4 + ammo[6] * 16 + ammo[7] * 64,
-            ]
             i = 0
             levels.append(cl)
-            cl = {"tile": [], "state": [], "position": [], "type": [], "ammo": []}
+            cl = {"tile": [], "state": [], "position": [], "type": [], "ammo": 0}
         elif i < 25:  # enemy info
             ti = [int(c, 16) for c in l.split(" ")]
             cl["state"].append(ti[2])
             cl["position"].append(ti[1] * 16 + ti[0])
-            cl["type"].append(ti[3] + ti[4] * 4)
+            cl["type"].append(ti[3])
             i += 1
         else:
             print("Too many enemy info")
@@ -73,5 +66,5 @@ with open(f"{data_path}/levels.txt", "r") as fi:
             f.write(bytearray(level["tile"]))
             f.write(bytearray(level["state"]))
             f.write(bytearray(level["position"]))
-            f.write(bytearray(level["ammo"]))
+            f.write(bytearray([level["ammo"]]))
             f.write(bytearray(level["type"]))

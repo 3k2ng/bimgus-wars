@@ -43,7 +43,6 @@ STATE_ROTATION = %11
 STATE_MOVING = %100
 STATE_ROTATING = %1000
 STATE_SHOOTING = %10000
-STATE_TO_SHOOT = %100000
 
 ; offsets
 OFFSET_IB_LOWER = 4
@@ -66,7 +65,7 @@ PTR_COLOR = $02 ; 2 bytes
 SCREEN_CURRENT = $04 ; 1 byte
 COLOR_CURRENT = $05 ; 1 byte
 
-SKIP_FRAME = $0f ; 1 byte
+ODD_FRAME = $0f ; 1 byte
 
 ; used for draw and stuff
 STATE = $10 ; 1 byte
@@ -82,12 +81,11 @@ NEIGHBOR_RIGHT = $1b ; 1 byte
 TANK_INDEX = $5f ; 1 byte
 TANK_STATE = $50 ; 1 byte
 TANK_POSITION = $51 ; 1 byte
-TANK_AMMO = $52 ; 1 byte
-BULLET_POSITION = $53 ; 1 byte
-TANK_FRONT = $54 ; 1 byte
-BULLET_FRONT = $55 ; 1 byte
-BULLET_BEHIND = $56 ; 1 byte
-TANK_DETAIL = $57 ; 1 byte
+BULLET_POSITION = $52 ; 1 byte
+TANK_FRONT = $53 ; 1 byte
+BULLET_FRONT = $54 ; 1 byte
+BULLET_BEHIND = $55 ; 1 byte
+TANK_DETAIL = $56 ; 1 byte
 
 ; for nested loop
 OTHER_TANK_INDEX = $5e ; 1 byte
@@ -96,8 +94,9 @@ OTHER_TANK_POSITION = $59 ; 1 byte
 OTHER_BULLET_POSITION = $5a ; 1 byte
 
 TARGET = $60 ; 1 byte
+IN_LOS = $61 ; 1 byte
 
-ENEMY_LEFT = $70
+ENEMY_LEFT = $70 ; 1 byte
 
 ; local variables
 KEY_LAST
@@ -119,9 +118,9 @@ PLAYER_POSITION
 ENEMY_POSITION
         ds.b 8
 PLAYER_AMMO
-        ds.b 2
+        ds.b 1
 ENEMY_DETAIL
-        ds.b 8 ; %----TTAA
+        ds.b 8 ;
 ; end of level data
 bullet_position
 PLAYER_BULLET
@@ -177,6 +176,9 @@ main_game
         sta ini+1
         jsr full_decomp
 
+        lda #1
+        sta ODD_FRAME
+
         jsr draw_tile
         lda #$40
         sta KEY_CURRENT
@@ -203,6 +205,10 @@ main_game
         jmp .skip_update
 
 .update_start
+        inc ODD_FRAME
+        lda ODD_FRAME
+        and #1
+        sta ODD_FRAME
 
         jsr reset_sfx_bitmask
 
@@ -305,15 +311,6 @@ move_tank
         beq .not_moving
         jmp .moving
 .not_moving
-        lda TANK_STATE
-        and #STATE_TO_SHOOT
-        beq .not_to_shoot
-        lda TANK_STATE
-        and #$ff^STATE_TO_SHOOT
-        ora #STATE_SHOOTING|STATE_MOVING
-        sta TANK_STATE
-        jmp .check_front
-.not_to_shoot
 
         ldx TANK_INDEX
         bne .not_player
@@ -338,9 +335,45 @@ move_tank
         sta TANK_STATE
         jmp .check_front
 .not_player
+
+        lda ODD_FRAME
+        beq .skip_odd_frame
+
+        ldx TANK_DETAIL
+        bne .not_basic_shoot
         lda TANK_STATE
-        ora #STATE_TO_SHOOT
+        ora #STATE_SHOOTING|STATE_MOVING
         sta TANK_STATE
+        jmp .check_front
+.not_basic_shoot
+        dex
+        bne .not_basic_detect
+        jsr check_los
+        lda IN_LOS
+        beq .not_in_los_0
+        lda TANK_STATE
+        ora #STATE_SHOOTING|STATE_MOVING
+        sta TANK_STATE
+        jmp .check_front
+.not_in_los_0
+.not_basic_detect
+        dex
+        bne .not_rotate_detect
+        jsr check_los
+        lda IN_LOS
+        beq .not_in_los_1
+        lda TANK_STATE
+        ora #STATE_SHOOTING|STATE_MOVING
+        sta TANK_STATE
+        jmp .check_front
+.not_in_los_1
+        lda TANK_STATE
+        ora #STATE_ROTATING
+        sta TANK_STATE
+        jmp .check_front
+.not_rotate_detect
+
+.skip_odd_frame
 
 .check_front
         lda TANK_FRONT
@@ -564,6 +597,108 @@ draw_tank
         rts
 
 
+; zp
+TARGET_POSITION = TEMP
+
+        subroutine
+check_los
+
+        lda #0
+        sta IN_LOS ;
+        lda TANK_STATE
+        and #STATE_ROTATION
+        tax
+        bne .not_up
+
+        lda PLAYER_POSITION
+        and #$f
+        sta TARGET_POSITION
+        lda TANK_POSITION
+        and #$f
+        cmp TARGET_POSITION
+        bne .not_target_up
+
+        lda PLAYER_POSITION
+        and #$f0
+        sta TARGET_POSITION
+        lda TANK_POSITION
+        and #$f0
+        cmp TARGET_POSITION
+        bpl .not_target_up
+        inc IN_LOS
+.not_target_up
+        jmp .done_check
+.not_up
+        dex
+        bne .not_left
+
+        lda PLAYER_POSITION
+        and #$f0
+        sta TARGET_POSITION
+        lda TANK_POSITION
+        and #$f0
+        cmp TARGET_POSITION
+        bne .not_target_left
+
+        lda PLAYER_POSITION
+        and #$f
+        sta TARGET_POSITION
+        lda TANK_POSITION
+        and #$f
+        cmp TARGET_POSITION
+        bmi .not_target_left
+        inc IN_LOS
+.not_target_left
+        jmp .done_check
+.not_left
+        dex
+        bne .not_down
+
+        lda PLAYER_POSITION
+        and #$f
+        sta TARGET_POSITION
+        lda TANK_POSITION
+        and #$f
+        cmp TARGET_POSITION
+        bne .not_target_down
+
+        lda PLAYER_POSITION
+        and #$f0
+        sta TARGET_POSITION
+        lda TANK_POSITION
+        and #$f0
+        cmp TARGET_POSITION
+        bmi .not_target_down
+        inc IN_LOS
+.not_target_down
+        jmp .done_check
+.not_down
+        dex
+        bne .not_right
+
+        lda PLAYER_POSITION
+        and #$f0
+        sta TARGET_POSITION
+        lda TANK_POSITION
+        and #$f0
+        cmp TARGET_POSITION
+        bne .not_target_right
+
+        lda PLAYER_POSITION
+        and #$f
+        sta TARGET_POSITION
+        lda TANK_POSITION
+        and #$f
+        cmp TARGET_POSITION
+        bpl .not_target_right
+        inc IN_LOS
+.not_target_right
+        jmp .done_check
+.not_right
+.done_check
+        rts
+
+
         subroutine
 load_tank
 
@@ -602,6 +737,12 @@ load_tank
         sta BULLET_BEHIND
 
         ; TODO: add ammo and details loading
+        ldx TANK_INDEX
+        beq .not_loading_player
+        dex
+        lda ENEMY_DETAIL,x
+        sta TANK_DETAIL
+.not_loading_player
 
         ldx OTHER_TANK_INDEX
         bmi .skip_other_tank
