@@ -177,15 +177,6 @@ main_game
         sta ini+1
         jsr full_decomp
 
-        inc CURRENT_LEVEL
-        lda CURRENT_LEVEL
-        asl 
-        tax
-        lda level_data_table,X
-        sta game_level_block_begin
-        lda level_data_table+1,X
-        sta game_level_block_begin+1
-
         lda #1
         sta ODD_FRAME
 
@@ -247,6 +238,14 @@ main_game
 
         dec ENEMY_LEFT
         bne .no_win
+        inc CURRENT_LEVEL
+        lda CURRENT_LEVEL
+        asl 
+        tax
+        lda level_data_table,X
+        sta game_level_block_begin
+        lda level_data_table+1,X
+        sta game_level_block_begin+1
         jmp .load_level ; you win
 .no_win
 
