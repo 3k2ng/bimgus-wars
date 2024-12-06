@@ -220,7 +220,7 @@ main_game_loop
         dey
         bpl .load_state_loop
 
-        jsr play_game_theme
+        ; jsr play_game_theme
         
         jmp .draw_update
 
@@ -259,10 +259,12 @@ main_game_loop
         lda player_tank_state
         cpx #UP_DOWN_KEY_CODE
         bne .not_up_down
+        jsr player_movement
         ora #STATE_BIT_MOVING
 .not_up_down
         cpx #LEFT_RIGHT_KEY_CODE
         bne .not_left_right
+        jsr player_movement
         ora #STATE_BIT_ROTATION
 .not_left_right
         ; cheat code 'f1' - load next level
@@ -382,7 +384,7 @@ main_game_loop
         bne .draw_enemy_loop
 
 .finish_update
-        jsr update_game_theme
+        ; jsr update_game_theme
         jmp .mgl_loop
 
 ; draw_tank_sr

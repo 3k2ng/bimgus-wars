@@ -2,27 +2,20 @@
 ;
 ; playing the in-game theme song
 
-SB      = $900a                 ; bass
-SA      = $900b                 ; alto
-SS      = $900c                 ; soprano
-SN      = $900d                 ; noise
-SV      = $900e                 ; volume
-JC      = $00a2                 ; jiffy clock
-
+; bitmask definitions
 NOISEM  = %00000001             ; noise mask
 BASSM   = %00000010             ; bass mask
 ALTOM   = %00000100             ; alto mask
 SOPRM   = %00001000             ; soprano mask
 
+; parameters
 INIT_V  = 8                     ; initial velocity of note
 
 ; zero page variables
-GAME_X_OFFSET = $10             ; note offset (i.e. X register)
-GAME_Y_OFFSET = $11             ; bitmask offset (i.e. Y register)
-GAME_DURATION = $12             ; stores a jiffy clock time that denotes when to move to the next note
-GAME_PREV_JC  = $13             ; stores the previous jiffy clock time (to calculate delta)
-; GAME_DELTA    = $13             ; temp variable that stores delta between prev time and now
-
+GAME_X_OFFSET = $20             ; note offset (i.e. X register)
+GAME_Y_OFFSET = $21             ; bitmask offset (i.e. Y register)
+GAME_DURATION = $22             ; stores a jiffy clock time that denotes when to move to the next note
+GAME_PREV_JC  = $23             ; stores the previous jiffy clock time (to calculate delta)
 
 ; initialize everything so that the game theme can start playing
         subroutine
@@ -130,7 +123,6 @@ reset_pitches
 
 
 ; define the song
-N0 = 0
 ; note values
 gameb   dc  220, 220, 220, 220, 220, 220, 220, 220, 224,      224
         dc  220, 220, 220, 220, 220, 220, 220, 208, 216, 216, 216, 216
