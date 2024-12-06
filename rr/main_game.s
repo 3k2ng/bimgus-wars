@@ -12,6 +12,7 @@ COLOR_RAM = $9600
 KEY_SPACE = $20
 KEY_UP_DOWN = $1f
 KEY_LEFT_RIGHT = $17
+KEY_ENTER = $0f
 
 ; screen code
 SCREEN_EMPTY = 0
@@ -140,44 +141,33 @@ ENEMY_BULLET
 
         subroutine
 main_game
-        ; lda #<sprite_data
-        ; sta PTR_COPY_SRC
-        ; lda #>sprite_data
-        ; sta PTR_COPY_SRC+1
-        ; lda #<sprite_data_end
-        ; sta PTR_COPY_SRC_END
-        ; lda #>sprite_data_end
-        ; sta PTR_COPY_SRC_END+1
-        ; lda #<CHARACTER_RAM
-        ; sta PTR_COPY_DST
-        ; lda #>CHARACTER_RAM
-        ; sta PTR_COPY_DST+1
-        ; jsr copy
         lda #<game_char_set
         sta ini
         lda #>game_char_set
         sta ini+1
         jsr full_decomp
 
-        lda #0
+        lda #$ff
         sta CURRENT_LEVEL
+
+.next_level
+        inc CURRENT_LEVEL
+        lda CURRENT_LEVEL
+        asl 
+        tax
+        lda level_data_table,X
+        sta game_level_block_begin
+        lda level_data_table+1,X
+        sta game_level_block_begin+1
 
 .load_level
         jsr clear_screen
 
-        ; lda #<level_data
-        ; sta PTR_COPY_SRC
-        ; lda #>level_data
-        ; sta PTR_COPY_SRC+1
-        ; lda #<level_data_end
-        ; sta PTR_COPY_SRC_END
-        ; lda #>level_data_end
-        ; sta PTR_COPY_SRC_END+1
-        ; lda #<level_state
-        ; sta PTR_COPY_DST
-        ; lda #>level_state
-        ; sta PTR_COPY_DST+1
-        ; jsr copy
+        lda CURRENT_LEVEL
+        cmp #NUM_LEVELS
+        bne .continue_load
+        rts
+.continue_load
         lda #<game_level_block
         sta ini
         lda #>game_level_block
@@ -190,7 +180,7 @@ main_game
         jsr draw_tile
         lda #$40
         sta KEY_CURRENT
-        sta KEY_LAST
+        ; sta KEY_LAST
         jmp .update_start
 
 .mg_loop
@@ -213,6 +203,13 @@ main_game
         jmp .skip_update
 
 .update_start
+
+        ldx KEY_CURRENT
+        cpx #KEY_ENTER
+        bne .not_cheat_key_enter
+        jmp .next_level
+.not_cheat_key_enter
+
         inc ODD_FRAME
         lda ODD_FRAME
         and #1
@@ -245,15 +242,7 @@ main_game
 
         dec ENEMY_LEFT
         bne .no_win
-        inc CURRENT_LEVEL
-        lda CURRENT_LEVEL
-        asl 
-        tax
-        lda level_data_table,X
-        sta game_level_block_begin
-        lda level_data_table+1,X
-        sta game_level_block_begin+1
-        jmp .load_level ; you win
+        jmp .next_level ; you win
 .no_win
 
         lda PLAYER_STATE
@@ -332,25 +321,13 @@ main_game
 .skip_update
         jmp .mg_loop
 
-        rts
-
 sprite_data
-        ; incbin "./data/sprite_data.bin"
         incbin "./data/sprite_data.zx02"
 sprite_data_end
 
-; level_1_data
-;         ; incbin "./data/level_data.bin"
-;         incbin "./data/level_1_data.zx02"
-; level_1_data_end
-; level_2_data
-;         incbin "./data/level_2_data.zx02"
-; level_2_data_end
-
-; level_data_table
-;         dc.w level_1_data, level_2_data, 0
-
         include "./zx02_level_data.s"
+
+        jmp .load_level ; you win
 
 
         subroutine
@@ -913,8 +890,7 @@ draw_entity
 .draw
         ldy #0
         jsr position2screen
-        jsr draw_screen
-        rts
+        jmp draw_screen
 
 
         subroutine
@@ -934,7 +910,6 @@ empty_position
         lda #SCREEN_EMPTY
         sta SCREEN_CURRENT
         jmp draw_screen
-        rts
 
 
 ; neighbor

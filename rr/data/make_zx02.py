@@ -15,7 +15,8 @@ with open("./zx02_level_data.s", "w") as f:
     f.write(f"level_data_table\n")
     for i in range(levels):
         f.write(f"\tdc.w level_{i+1}_data\n")
-    f.write("\tdc.w 0\n")
+    # f.write(f"\tdc.w 0\n")
+    f.write(f"NUM_LEVELS = {levels}\n")
     
 #
 # level_1_data

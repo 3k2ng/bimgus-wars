@@ -27,7 +27,8 @@ start
         jsr play_title_theme
 
         jsr main_game
-        rts
+
+        jmp start
 
         include "./title_screen_zx02.s"
 
