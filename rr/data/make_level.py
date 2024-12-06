@@ -61,9 +61,9 @@ with open(f"{data_path}/levels.txt", "r") as fi:
             i += 1
         else:
             print("Too many enemy info")
-
-    with open(f"{data_path}/level_data.bin", "wb") as f:
-        for level in levels:
+    level_num = 1
+    for level in levels:
+        with open(f"{data_path}/level_{level_num}_data.bin", "wb") as f:
             if len(level["state"]) < 9:
                 level["state"] += [0xFF] * (9 - len(level["state"]))
             if len(level["position"]) < 9:

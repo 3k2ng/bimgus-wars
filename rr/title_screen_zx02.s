@@ -97,6 +97,15 @@ ini_block
         dc.b $00, $00
         dc.w zx02_color_map, COLOR_RAM
         dc.b $80
+; game char set
+game_char_set
+        dc.b $00, $00
+        dc.w sprite_data, CHARACTER_RAM
+        dc.b $80
+game_level_block
+        dc.b $00, $00
+        dc.w level_1_data, level_state
+        dc.b $80
 
 ;--------------------------------------------------
 ; Decompress ZX0 data (6502 optimized format)

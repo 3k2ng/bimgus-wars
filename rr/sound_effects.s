@@ -76,7 +76,6 @@ jiffyP
 ; move on to the next velocity value
         beq playerExplosionNext ; restart main loop
 
-
 ; enemy explosion sound effect
 enemyExplosion
         sta SFX_SAVE_ACC        ; save accumulator so it can be restored at the end, just in case

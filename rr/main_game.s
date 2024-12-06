@@ -129,40 +129,53 @@ PLAYER_BULLET
 ENEMY_BULLET
         ds.b 8
 
+level_data_table
+        dc.w level_2_data
+
         subroutine
 main_game
-        lda #<sprite_data
-        sta PTR_COPY_SRC
-        lda #>sprite_data
-        sta PTR_COPY_SRC+1
-        lda #<sprite_data_end
-        sta PTR_COPY_SRC_END
-        lda #>sprite_data_end
-        sta PTR_COPY_SRC_END+1
-        lda #<CHARACTER_RAM
-        sta PTR_COPY_DST
-        lda #>CHARACTER_RAM
-        sta PTR_COPY_DST+1
-        jsr copy
+        ; lda #<sprite_data
+        ; sta PTR_COPY_SRC
+        ; lda #>sprite_data
+        ; sta PTR_COPY_SRC+1
+        ; lda #<sprite_data_end
+        ; sta PTR_COPY_SRC_END
+        ; lda #>sprite_data_end
+        ; sta PTR_COPY_SRC_END+1
+        ; lda #<CHARACTER_RAM
+        ; sta PTR_COPY_DST
+        ; lda #>CHARACTER_RAM
+        ; sta PTR_COPY_DST+1
+        ; jsr copy
+        lda #<game_char_set
+        sta ini
+        lda #>game_char_set
+        sta ini+1
+        jsr full_decomp
 
 .load_level
         jsr clear_screen
 
         jsr reset_sfx_bitmask
 
-        lda #<level_data
-        sta PTR_COPY_SRC
-        lda #>level_data
-        sta PTR_COPY_SRC+1
-        lda #<level_data_end
-        sta PTR_COPY_SRC_END
-        lda #>level_data_end
-        sta PTR_COPY_SRC_END+1
-        lda #<level_state
-        sta PTR_COPY_DST
-        lda #>level_state
-        sta PTR_COPY_DST+1
-        jsr copy
+        ; lda #<level_data
+        ; sta PTR_COPY_SRC
+        ; lda #>level_data
+        ; sta PTR_COPY_SRC+1
+        ; lda #<level_data_end
+        ; sta PTR_COPY_SRC_END
+        ; lda #>level_data_end
+        ; sta PTR_COPY_SRC_END+1
+        ; lda #<level_state
+        ; sta PTR_COPY_DST
+        ; lda #>level_state
+        ; sta PTR_COPY_DST+1
+        ; jsr copy
+        lda #<game_level_block
+        sta ini
+        lda #>game_level_block
+        sta ini+1
+        jsr full_decomp
 
         jsr draw_tile
         lda #$40
@@ -264,12 +277,14 @@ main_game
         rts
 
 sprite_data
-        incbin "./data/sprite_data.bin"
+        ; incbin "./data/sprite_data.bin"
+        incbin "./data/sprite_data.zx02"
 sprite_data_end
 
-level_data
-        incbin "./data/level_data.bin"
-level_data_end
+level_1_data
+        ; incbin "./data/level_data.bin"
+        incbin "./data/level_data.zx02"
+level_1_data_end
 
 
         subroutine
