@@ -104,6 +104,7 @@ game_char_set
         dc.b $80
 game_level_block
         dc.b $00, $00
+game_level_block_begin
         dc.w level_1_data, level_state
         dc.b $80
 

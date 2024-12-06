@@ -77,6 +77,9 @@ NEIGHBOR_LEFT = $19 ; 1 byte
 NEIGHBOR_DOWN = $1a ; 1 byte
 NEIGHBOR_RIGHT = $1b ; 1 byte
 
+; used for storing which level the player is currently on
+CURRENT_LEVEL = $26
+
 ; used to load and store tank info
 TANK_INDEX = $5f ; 1 byte
 TANK_STATE = $50 ; 1 byte
@@ -128,9 +131,6 @@ PLAYER_BULLET
 ENEMY_BULLET
         ds.b 8
 
-level_data_table
-        dc.w level_2_data
-
         subroutine
 main_game
         ; lda #<sprite_data
@@ -152,10 +152,11 @@ main_game
         sta ini+1
         jsr full_decomp
 
+        lda #0
+        sta CURRENT_LEVEL
+
 .load_level
         jsr clear_screen
-
-        jsr reset_sfx_bitmask
 
         ; lda #<level_data
         ; sta PTR_COPY_SRC
@@ -175,6 +176,15 @@ main_game
         lda #>game_level_block
         sta ini+1
         jsr full_decomp
+
+        inc CURRENT_LEVEL
+        lda CURRENT_LEVEL
+        asl 
+        tax
+        lda level_data_table,X
+        sta game_level_block_begin
+        lda level_data_table+1,X
+        sta game_level_block_begin+1
 
         lda #1
         sta ODD_FRAME
@@ -289,8 +299,14 @@ sprite_data_end
 
 level_1_data
         ; incbin "./data/level_data.bin"
-        incbin "./data/level_data.zx02"
+        incbin "./data/level_1_data.zx02"
 level_1_data_end
+level_2_data
+        incbin "./data/level_2_data.zx02"
+level_2_data_end
+
+level_data_table
+        dc.w level_1_data, level_2_data, 0
 
 
         subroutine
