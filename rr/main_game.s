@@ -325,6 +325,7 @@ move_tank
         sta TANK_STATE
         jmp .check_front
 .not_basic_shoot
+
         dex
         bne .not_basic_detect
         lda IN_LOS
@@ -335,6 +336,7 @@ move_tank
 .not_in_los_0
         jmp .check_front
 .not_basic_detect
+
         dex
         bne .not_rotate_detect
         lda IN_LOS
@@ -349,6 +351,31 @@ move_tank
         sta TANK_STATE
         jmp .check_front
 .not_rotate_detect
+
+        dex
+        bne .not_move_detect
+        lda IN_LOS
+        beq .not_in_los_2
+        lda TANK_STATE
+        ora #STATE_SHOOTING|STATE_MOVING
+        sta TANK_STATE
+        jmp .check_front
+.not_in_los_2
+        lda TANK_FRONT
+        sta POSITION
+        jsr read_target
+        lda TARGET
+        bne .have_to_rotate
+        lda TANK_STATE
+        ora #STATE_MOVING
+        sta TANK_STATE
+        jmp .check_front
+.have_to_rotate
+        lda TANK_STATE
+        ora #STATE_ROTATING
+        sta TANK_STATE
+        jmp .check_front
+.not_move_detect
 
 .skip_odd_frame
 
