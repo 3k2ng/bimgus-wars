@@ -1127,27 +1127,27 @@ PTR_COPY_DST = $84 ; 2 bytes
 
 ; copy
 ; -x-
-        subroutine
-copy
-        ldy #0
-.copy_loop
-        lda PTR_COPY_SRC
-        cmp PTR_COPY_SRC_END
-        bne .0
-        lda PTR_COPY_SRC+1
-        cmp PTR_COPY_SRC_END+1
-        beq .copy_done
-.0
-        lda (PTR_COPY_SRC),y
-        sta (PTR_COPY_DST),y
-        inc PTR_COPY_SRC
-        bne .1
-        inc PTR_COPY_SRC+1
-.1
-        inc PTR_COPY_DST
-        bne .2
-        inc PTR_COPY_DST+1
-.2
-        jmp .copy_loop
-.copy_done
-        rts
+;         subroutine
+; copy
+;         ldy #0
+; .copy_loop
+;         lda PTR_COPY_SRC
+;         cmp PTR_COPY_SRC_END
+;         bne .0
+;         lda PTR_COPY_SRC+1
+;         cmp PTR_COPY_SRC_END+1
+;         beq .copy_done
+; .0
+;         lda (PTR_COPY_SRC),y
+;         sta (PTR_COPY_DST),y
+;         inc PTR_COPY_SRC
+;         bne .1
+;         inc PTR_COPY_SRC+1
+; .1
+;         inc PTR_COPY_DST
+;         bne .2
+;         inc PTR_COPY_DST+1
+; .2
+;         jmp .copy_loop
+; .copy_done
+;         rts
