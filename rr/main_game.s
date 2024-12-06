@@ -21,6 +21,7 @@ SCREEN_BUSH = 3
 SCREEN_TANK_UP = 4
 SCREEN_BULLET_UP = 16
 SCREEN_TANK_ROTATING_UP = 28
+SCREEN_AMMO = 32
 
 ; color code
 COLOR_BLACK = 0
@@ -51,6 +52,7 @@ OFFSET_IB_UPPER = 8
 ; constants
 SCREEN_WIDTH = 22
 GAME_OFFSET = 69 ; offset from start of screen ram to start of game
+AMMO_OFFSET = 421 ; offset from start of screen ram to where u should draw the ammo
 GAME_WIDTH = 16
 GAME_HEIGHT = 16
 
@@ -102,6 +104,8 @@ ENEMY_LEFT = $70 ; 1 byte
 KEY_LAST
         ds.b 1
 JIFFY_BIT_LAST
+        ds.b 1
+SHOOTING_BIT_LAST
         ds.b 1
 ; current level data
 level_state
@@ -223,6 +227,14 @@ main_game
         jmp .load_level ; you win
 .no_win
 
+        lda PLAYER_STATE
+        and #STATE_SHOOTING
+        bne .no_lose ; player not shooting
+        lda PLAYER_AMMO
+        bne .no_lose
+        jmp .load_level ; out of ammo
+.no_lose
+
         lda #8
         sta TANK_INDEX
 .collide_tank_loop
@@ -259,6 +271,34 @@ main_game
 .skip_draw_tank
         dec TANK_INDEX
         bpl .draw_loop
+
+        lda #<SCREEN_RAM+<AMMO_OFFSET
+        sta PTR_SCREEN
+        lda #>SCREEN_RAM+>AMMO_OFFSET
+        sta PTR_SCREEN+1
+        lda #<COLOR_RAM+<AMMO_OFFSET
+        sta PTR_COLOR
+        lda #>COLOR_RAM+>AMMO_OFFSET
+        sta PTR_COLOR+1
+        ldy #16-1
+.clean_ammo_area_loop
+        lda #SCREEN_EMPTY
+        sta SCREEN_CURRENT
+        lda #COLOR_YELLOW
+        sta COLOR_CURRENT
+        jsr draw_screen
+        dey
+        bpl .clean_ammo_area_loop
+        ldy PLAYER_AMMO
+        dey
+.draw_ammo_loop
+        lda #SCREEN_AMMO
+        sta SCREEN_CURRENT
+        lda #COLOR_YELLOW
+        sta COLOR_CURRENT
+        jsr draw_screen
+        dey
+        bpl .draw_ammo_loop
 
 .skip_update
         jmp .mg_loop
@@ -479,6 +519,15 @@ move_tank
         sta TANK_STATE
         jmp .finish_moving
 .finish_moving
+        lda PLAYER_STATE
+        and #STATE_SHOOTING
+        cmp SHOOTING_BIT_LAST
+        sta SHOOTING_BIT_LAST
+        beq .player_not_just_shot
+        lda SHOOTING_BIT_LAST
+        beq .player_not_just_shot
+        dec PLAYER_AMMO
+.player_not_just_shot
         rts
 
 
