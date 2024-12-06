@@ -393,6 +393,11 @@ move_tank
 
         dex
         bne .not_move_detect
+        lda TANK_FRONT
+        sta POSITION
+        jsr read_target
+        lda TARGET
+        bne .have_to_rotate
         lda IN_LOS
         beq .not_in_los_2
         lda TANK_STATE
@@ -400,11 +405,6 @@ move_tank
         sta TANK_STATE
         jmp .check_front
 .not_in_los_2
-        lda TANK_FRONT
-        sta POSITION
-        jsr read_target
-        lda TARGET
-        bne .have_to_rotate
         lda TANK_STATE
         ora #STATE_MOVING
         sta TANK_STATE
