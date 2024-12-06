@@ -103,6 +103,8 @@ IN_LOS = $61 ; 1 byte
 
 ENEMY_LEFT = $70 ; 1 byte
 
+        seg.u local_level_data_zone
+        org $1d10
 ; local variables
 KEY_LAST
         ds.b 1
@@ -134,6 +136,7 @@ PLAYER_BULLET
         ds.b 1
 ENEMY_BULLET
         ds.b 8
+        seg
 
         subroutine
 main_game
