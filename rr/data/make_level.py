@@ -1,5 +1,7 @@
 import sys
 
+level_num = 0
+
 EMPTY_TILE = 0
 WALL_TILE = 1
 CRACK_TILE = 2
@@ -54,7 +56,6 @@ with open(f"{data_path}/levels.txt", "r") as fi:
             i += 1
         else:
             print("Too many enemy info")
-    level_num = 0
     for level in levels:
         level_num += 1
         print(f"Level {level_num}: ", level)
@@ -70,3 +71,5 @@ with open(f"{data_path}/levels.txt", "r") as fi:
             f.write(bytearray(level["position"]))
             f.write(bytearray([level["ammo"]]))
             f.write(bytearray(level["type"]))
+    with open(f"{data_path}/level_num.txt", "w") as f:
+        f.write(str(level_num))

@@ -12,6 +12,8 @@ all: clean $(ALL)
 	./data/zx02 ./data/level_1_data.bin ./data/level_1_data.zx02
 	./data/zx02 ./data/level_2_data.bin ./data/level_2_data.zx02
 	rm -rf ./data/*.bin
+	python ./data/make_zx02.py
+	rm -rf ./data/level_num.txt
 
 ./_bimgus_game.prg: ./bimgus_game.s ./main_game.s ./data/sprite_data.bin ./data/level_data.bin
 	dasm $< -o$@ -l$(<:.s=.lst)

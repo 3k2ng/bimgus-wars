@@ -296,16 +296,18 @@ sprite_data
         incbin "./data/sprite_data.zx02"
 sprite_data_end
 
-level_1_data
-        ; incbin "./data/level_data.bin"
-        incbin "./data/level_1_data.zx02"
-level_1_data_end
-level_2_data
-        incbin "./data/level_2_data.zx02"
-level_2_data_end
+; level_1_data
+;         ; incbin "./data/level_data.bin"
+;         incbin "./data/level_1_data.zx02"
+; level_1_data_end
+; level_2_data
+;         incbin "./data/level_2_data.zx02"
+; level_2_data_end
 
-level_data_table
-        dc.w level_1_data, level_2_data, 0
+; level_data_table
+;         dc.w level_1_data, level_2_data, 0
+
+        include "./zx02_level_data.s"
 
 
         subroutine
