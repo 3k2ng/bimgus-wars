@@ -3,4 +3,6 @@ level_1_data
 level_2_data
 	incbin "./data/level_2_data.zx02"
 level_data_table
-	dc.w level_1_data, level_2_data, 0
+	dc.w level_1_data
+	dc.w level_2_data
+	dc.w 0
