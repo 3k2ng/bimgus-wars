@@ -316,6 +316,7 @@ move_tank
 
         lda ODD_FRAME
         beq .skip_odd_frame
+        jsr check_los
 
         ldx TANK_DETAIL
         bne .not_basic_shoot
@@ -326,18 +327,16 @@ move_tank
 .not_basic_shoot
         dex
         bne .not_basic_detect
-        jsr check_los
         lda IN_LOS
         beq .not_in_los_0
         lda TANK_STATE
         ora #STATE_SHOOTING|STATE_MOVING
         sta TANK_STATE
-        jmp .check_front
 .not_in_los_0
+        jmp .check_front
 .not_basic_detect
         dex
         bne .not_rotate_detect
-        jsr check_los
         lda IN_LOS
         beq .not_in_los_1
         lda TANK_STATE
@@ -601,7 +600,7 @@ check_los
         lda TANK_POSITION
         and #$f0
         cmp TARGET_POSITION
-        bpl .not_target_up
+        bmi .not_target_up
         inc IN_LOS
 .not_target_up
         jmp .done_check
@@ -645,7 +644,7 @@ check_los
         lda TANK_POSITION
         and #$f0
         cmp TARGET_POSITION
-        bmi .not_target_down
+        bpl .not_target_down
         inc IN_LOS
 .not_target_down
         jmp .done_check
