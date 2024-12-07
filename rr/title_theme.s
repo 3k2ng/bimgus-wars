@@ -36,7 +36,8 @@ play_title_theme
 .inner
         ; check if we need to exit (player input)
         ldy KEY_CURRENT
-        cpy #64
+        cpy #$40
+        sty KEY_LAST
         bne .end_song
         ; check if the note duration is elapsed
         cmp JC

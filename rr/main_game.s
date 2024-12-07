@@ -180,7 +180,7 @@ main_game
         jsr draw_tile
         lda #$40
         sta KEY_CURRENT
-        ; sta KEY_LAST
+        ;sta KEY_LAST
         jmp .update_start
 
 .mg_loop

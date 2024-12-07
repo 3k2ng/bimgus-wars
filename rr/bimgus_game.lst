@@ -1,0 +1,1741 @@
+------- FILE bimgus_game.s LEVEL 1 PASS 3
+      1  1bdf ????						; bimgus game base only have the BASIC stub really, include other files
+      2  1bdf ????
+      3  1bdf ????				      processor	6502
+      4  1001					      org	$1001
+      5  1001
+      6  1001							; BASIC stub
+      7  1001		       0b 10		      dc.w	nextstmt
+      8  1003		       0a 00		      dc.w	10
+      9  1005		       9e 34 31 30*	      dc.b	$9e, [start]d, 0
+     10  100b				   nextstmt
+     11  100b		       00 00		      dc.w	0
+     12  100d
+     13  100d							; main
+     14  100d				   start
+     15  100d
+     16  100d							; set character location to character ram (TODO: get rid of magic numbers!)
+     17  100d		       a9 ff		      lda	#$ff
+     18  100f		       8d 05 90 	      sta	$9005
+     19  1012
+     20  1012							; set screen and border color (TODO: get rid of magic numbers!)
+     21  1012		       a9 0b		      lda	#$0b
+     22  1014		       8d 0f 90 	      sta	$900f
+     23  1017
+     24  1017							; Display title screen
+     25  1017		       20 23 10 	      jsr	decompress_all
+     26  101a
+     27  101a		       20 33 12 	      jsr	play_title_theme
+     28  101d
+     29  101d		       20 5a 13 	      jsr	main_game
+     30  1020
+     31  1020		       4c 0d 10 	      jmp	start
+     32  1023
+------- FILE ./title_screen_zx02.s LEVEL 2 PASS 3
+      0  1023					      include	"./title_screen_zx02.s"
+      1  1023							; zx02 compression for title screen
+      2  1023							; the original source is at https://github.com/dmsc/zx02/blob/main/6502/zx02-optim.asm
+      3  1023							;
+      4  1023							; displaying the title screen
+      5  1023							; game name: BIMGUS WARS
+      6  1023							; team name: UR MOM
+      7  1023							; year: 2024
+      8  1023							; title picture: 1 green tank facing 3 red tank
+      9  1023
+     10  1023							; De-compressor for ZX02 files
+     11  1023							; ----------------------------
+     12  1023							;
+     13  1023							; Decompress ZX02 data (6502 optimized format), optimized for speed and size
+     14  1023							;  138 bytes code, 58.0 cycles/byte in test file.
+     15  1023							;
+     16  1023							; Compress with:
+     17  1023							;    zx02 input.bin output.zx0
+     18  1023							;
+     19  1023							; (c) 2022 DMSC
+     20  1023							; Code under MIT license, see LICENSE file.
+     21  1023
+     22  1023							; Info pertaining to ZX02
+     23  1023		       00 80	   ZP	      =	$80
+     24  1023
+     25  1023		       00 80	   offset     equ	ZP+0
+     26  1023		       00 82	   ZX0_src    equ	ZP+2
+     27  1023		       00 84	   ZX0_dst    equ	ZP+4
+     28  1023		       00 86	   bitr       equ	ZP+6
+     29  1023		       00 87	   pntr       equ	ZP+7
+     30  1023		       00 89	   ini	      equ	ZP+9
+     31  1023		       00 8b	   index      equ	ZP+11
+     32  1023
+     33  1023							; Info pertaining to writing to screen
+     34  1023		       1c 00	   CHARACTER_RAM =	$1c00
+     35  1023							; character_ram split into 2 bytes
+     36  1023		       00 00	   CHRB0      =	$00
+     37  1023		       00 1c	   CHRB1      =	$1c
+     38  1023
+     39  1023		       1e 00	   SCREEN_RAM =	$1e00
+     40  1023							; screen_ram split into 2 bytes
+     41  1023		       00 00	   SCRB0      =	$00
+     42  1023		       00 1e	   SCRB1      =	$1e
+     43  1023
+     44  1023		       96 00	   COLOR_RAM  =	$9600
+     45  1023							; color_ram split into 2 bytes
+     46  1023		       00 00	   CORB0      =	$00
+     47  1023		       00 96	   CORB1      =	$96
+     48  1023
+     49  1023							; Info pertaining to input reading
+     50  1023		       ff d2	   CHROUT     =	$ffd2
+     51  1023
+     52  1023							; CURRENT_KEY = $c5
+     53  1023
+     54  1023							; SPACE_KEY_CODE = $20
+     55  1023							; UP_DOWN_KEY_CODE = $1f
+     56  1023							; LEFT_RIGHT_KEY_CODE = $17
+     57  1023
+     58  1023							; main
+     59  1023				   decompress_all
+     60  1023		       a9 03		      lda	#3
+     61  1025		       85 8b		      sta	index
+     62  1027							; Decompress the title screen
+     63  1027							; char set
+     64  1027		       a9 45		      lda	#<ini_block
+     65  1029		       85 89		      sta	ini
+     66  102b		       a9 10		      lda	#>ini_block
+     67  102d		       85 8a		      sta	ini+1
+     68  102f		       18		      clc
+     69  1030		       4c 3d 10 	      jmp	test7
+     70  1033							; char map, color map, etc.
+     71  1033				   decomp_loop
+     72  1033		       a5 89		      lda	ini	; get the LSB of the ini pointer
+     73  1035		       69 07		      adc	#7	; increment by 7
+     74  1037		       85 89		      sta	ini	; store new pointer
+     75  1039		       90 02		      bcc	test7	; if the carry flag was set, we crossed a page
+     76  103b		       e6 8a		      inc	ini+1	; increment the MSB of the pointer
+     77  103d				   test7
+     78  103d		       20 68 10 	      jsr	full_decomp	; call decompression subroutine
+     79  1040		       c6 8b		      dec	index	; move on to the next ini block
+     80  1042		       d0 ef		      bne	decomp_loop	; if 0, we are done
+     81  1044							; all done!
+     82  1044		       60		      rts
+     83  1045
+     84  1045
+     85  1045							; Initial values for offset, source, destination and bitr
+     86  1045							; dc.b $00, $00, <comp_data, >comp_data, <out_addr, >out_addr, $80
+     87  1045				   ini_block
+     88  1045							; char set
+     89  1045		       00 00		      dc.b	$00, $00
+     90  1047		       ec 10 00 1c	      dc.w	zx02_char_set, CHARACTER_RAM
+     91  104b		       80		      dc.b	$80
+     92  104c							; char map
+     93  104c		       00 00		      dc.b	$00, $00
+     94  104e		       76 11 00 1e	      dc.w	zx02_char_map, SCREEN_RAM
+     95  1052		       80		      dc.b	$80
+     96  1053							; color map
+     97  1053		       00 00		      dc.b	$00, $00
+     98  1055		       1b 12 00 96	      dc.w	zx02_color_map, COLOR_RAM
+     99  1059		       80		      dc.b	$80
+    100  105a							; game char set
+    101  105a				   game_char_set
+    102  105a		       00 00		      dc.b	$00, $00
+    103  105c		       88 14 00 1c	      dc.w	sprite_data, CHARACTER_RAM
+    104  1060		       80		      dc.b	$80
+    105  1061				   game_level_block
+    106  1061		       00 00		      dc.b	$00, $00
+    107  1063				   game_level_block_begin
+    108  1063		       38 15 13 1d	      dc.w	level_1_data, level_state
+    109  1067		       80		      dc.b	$80
+    110  1068
+    111  1068							;--------------------------------------------------
+    112  1068							; Decompress ZX0 data (6502 optimized format)
+    113  1068
+    114  1068				   full_decomp
+    115  1068							; Get initialization block
+    116  1068		       a0 07		      ldy	#7
+    117  106a
+    118  106a				   copy_init
+    119  106a		       88		      dey
+    120  106b		       b1 89		      lda	(ini),Y	; JCH
+    121  106d		       99 80 00 	      sta	offset,Y
+    122  1070		       c0 00		      cpy	#0
+    123  1072		       d0 f6		      bne	copy_init
+    124  1074
+    125  1074							; Decode literal: Ccopy next N bytes from compressed file
+    126  1074							;    Elias(length)  byte[1]  byte[2]  ...  byte[N]
+    127  1074				   decode_literal
+    128  1074		       20 d1 10 	      jsr	get_elias
+    129  1077
+    130  1077		       b1 82	   cop0       lda	(ZX0_src),Y
+    131  1079		       e6 82		      inc	ZX0_src
+    132  107b		       d0 02		      bne	test4	; JCH
+    133  107d		       e6 83		      inc	ZX0_src+1
+    134  107f		       91 84	   test4      sta	(ZX0_dst),Y	; JCH
+    135  1081		       e6 84		      inc	ZX0_dst
+    136  1083		       d0 02		      bne	test5	; JCH
+    137  1085		       e6 85		      inc	ZX0_dst+1
+    138  1087		       ca	   test5      dex		; JCH
+    139  1088		       d0 ed		      bne	cop0
+    140  108a
+    141  108a		       06 86		      asl	bitr
+    142  108c		       b0 26		      bcs	dzx0s_new_offset
+    143  108e
+    144  108e							; Copy from last offset (repeat N bytes from last offset)
+    145  108e							;    Elias(length)
+    146  108e		       20 d1 10 	      jsr	get_elias
+    147  1091				   dzx0s_copy
+    148  1091		       a5 84		      lda	ZX0_dst
+    149  1093		       e5 80		      sbc	offset	; C=0 from get_elias
+    150  1095		       85 87		      sta	pntr
+    151  1097		       a5 85		      lda	ZX0_dst+1
+    152  1099		       e5 81		      sbc	offset+1
+    153  109b		       85 88		      sta	pntr+1
+    154  109d
+    155  109d				   cop1
+    156  109d		       b1 87		      lda	(pntr),Y
+    157  109f		       e6 87		      inc	pntr
+    158  10a1		       d0 02		      bne	test1	; JCH
+    159  10a3		       e6 88		      inc	pntr+1
+    160  10a5		       91 84	   test1      sta	(ZX0_dst),Y	; JCH
+    161  10a7		       e6 84		      inc	ZX0_dst
+    162  10a9		       d0 02		      bne	test2	; JCH
+    163  10ab		       e6 85		      inc	ZX0_dst+1
+    164  10ad		       ca	   test2      dex		; JCH
+    165  10ae		       d0 ed		      bne	cop1
+    166  10b0
+    167  10b0		       06 86		      asl	bitr
+    168  10b2		       90 c0		      bcc	decode_literal
+    169  10b4
+    170  10b4							; Copy from new offset (repeat N bytes from new offset)
+    171  10b4							;    Elias(MSB(offset))  LSB(offset)  Elias(length-1)
+    172  10b4				   dzx0s_new_offset
+    173  10b4							; Read elias code for high part of offset
+    174  10b4		       20 d1 10 	      jsr	get_elias
+    175  10b7		       f0 32		      beq	exit	; Read a 0, signals the end
+    176  10b9							; Decrease and divide by 2
+    177  10b9		       ca		      dex
+    178  10ba		       8a		      txa
+    179  10bb		       4a		      lsr		; JCH
+    180  10bc		       85 81		      sta	offset+1
+    181  10be
+    182  10be							; Get low part of offset, a literal 7 bits
+    183  10be		       b1 82		      lda	(ZX0_src),Y
+    184  10c0		       e6 82		      inc	ZX0_src
+    185  10c2		       d0 02		      bne	test3	; JCH
+    186  10c4		       e6 83		      inc	ZX0_src+1
+    187  10c6				   test3		; JCH
+    188  10c6							; Divide by 2
+    189  10c6		       6a		      ror		; JCH
+    190  10c7		       85 80		      sta	offset
+    191  10c9
+    192  10c9							; And get the copy length.
+    193  10c9							; Start elias reading with the bit already in carry:
+    194  10c9		       a2 01		      ldx	#1
+    195  10cb		       20 e8 10 	      jsr	elias_skip1
+    196  10ce
+    197  10ce		       e8		      inx
+    198  10cf		       90 c0		      bcc	dzx0s_copy
+    199  10d1
+    200  10d1							; Read an elias-gamma interlaced code.
+    201  10d1							; ------------------------------------
+    202  10d1				   get_elias
+    203  10d1							; Initialize return value to #1
+    204  10d1		       a2 01		      ldx	#1
+    205  10d3		       d0 04		      bne	elias_start
+    206  10d5
+    207  10d5				   elias_get		; Read next data bit to result
+    208  10d5		       06 86		      asl	bitr
+    209  10d7		       2a		      rol
+    210  10d8		       aa		      tax
+    211  10d9
+    212  10d9				   elias_start
+    213  10d9							; Get one bit
+    214  10d9		       06 86		      asl	bitr
+    215  10db		       d0 0b		      bne	elias_skip1
+    216  10dd
+    217  10dd							; Read new bit from stream
+    218  10dd		       b1 82		      lda	(ZX0_src),Y
+    219  10df		       e6 82		      inc	ZX0_src
+    220  10e1		       d0 02		      bne	test6	; JCH
+    221  10e3		       e6 83		      inc	ZX0_src+1
+    222  10e5				   test6		;sec	; not needed, C=1 guaranteed from last bit ; JCH
+    223  10e5		       2a		      rol		; JCH
+    224  10e6		       85 86		      sta	bitr
+    225  10e8
+    226  10e8				   elias_skip1
+    227  10e8		       8a		      txa
+    228  10e9		       b0 ea		      bcs	elias_get
+    229  10eb							; Got ending bit, stop reading
+    230  10eb				   exit
+    231  10eb		       60		      rts
+    232  10ec
+------- FILE zx02_data.s LEVEL 3 PASS 3
+      0  10ec					      include	"zx02_data.s"
+      1  10ec				   zx02_char_set
+      2  10ec		       f0 07 1f 3c*	      dc.b	$f0, $07, $1f, $3c, $70, $60, $e0, $c1, $a2, $c0, $f0, $fc, $ff, $83, $00, $52
+      3  10fc		       17 ad 01 03*	      dc.b	$17, $ad, $01, $03, $07, $0f, $1f, $3f, $7f, $ff, $c3, $c3, $e7, $7f, $7f, $3f
+      4  110c		       0f 03 ff 74*	      dc.b	$0f, $03, $ff, $74, $01, $17, $54, $47, $57, $d0, $00, $80, $00, $c0, $e0, $02
+      5  111c		       f0 55 03 0f*	      dc.b	$f0, $55, $03, $0f, $58, $5a, $00, $4d, $1c, $18, $f8, $fc, $fe, $33, $4e, $fc
+      6  112c		       f0 c0 d5 17*	      dc.b	$f0, $c0, $d5, $17, $35, $a4, $e0, $c0, $80, $1f, $95, $4e, $87, $95, $67, $12
+      7  113c		       07 ef 94 17*	      dc.b	$07, $ef, $94, $17, $d5, $e0, $f8, $fe, $00, $49, $45, $07, $0d, $94, $1e, $7f
+      8  114c		       5d 67 50 00*	      dc.b	$5d, $67, $50, $00, $8b, $3c, $c8, $3f, $1f, $34, $07, $03, $01, $df, $91, $e0
+      9  115c		       fc 24 ad 24*	      dc.b	$fc, $24, $ad, $24, $55, $1f, $17, $81, $55, $07, $01, $0f, $0f, $06, $f0, $34
+     10  116c		       1f 12 51 07*	      dc.b	$1f, $12, $51, $07, $6a, $6c, $01, $aa, $aa, $00
+     11  1176				   zx02_char_map
+     12  1176		       3b e0 8e 8a*	      dc.b	$3b, $e0, $8e, $8a, $82, $89, $8d, $87, $95, $93, $e0, $97, $81, $92, $93, $e0
+     13  1186		       ac e8 95 92*	      dc.b	$ac, $e8, $95, $92, $e0, $8d, $8f, $8d, $e0, $b2, $b0, $b2, $b4, $e0, $bb, $ce
+     14  1196		       2a 00 01 02*	      dc.b	$2a, $00, $01, $02, $03, $01, $e0, $88, $04, $05, $d6, $47, $c3, $02, $28, $06
+     15  11a6		       07 05 05 ed*	      dc.b	$07, $05, $05, $ed, $02, $1c, $08, $45, $09, $0a, $2e, $0b, $27, $96, $47, $20
+     16  11b6		       0c 0d 82 0e*	      dc.b	$0c, $0d, $82, $0e, $0c, $5d, $0f, $10, $27, $33, $47, $31, $11, $10, $12, $13
+     17  11c6		       29 83 34 47*	      dc.b	$29, $83, $34, $47, $a2, $31, $14, $15, $39, $83, $49, $47, $0c, $0b, $75, $e9
+     18  11d6		       01 d5 47 75*	      dc.b	$01, $d5, $47, $75, $e9, $23, $d1, $a2, $0a, $39, $e9, $62, $5b, $61, $16, $17
+     19  11e6		       2b 2d e9 14*	      dc.b	$2b, $2d, $e9, $14, $19, $51, $b4, $05, $18, $19, $05, $e1, $e9, $b4, $2a, $14
+     20  11f6		       1a 0b a4 1b*	      dc.b	$1a, $0b, $a4, $1b, $1c, $0c, $1d, $e9, $b6, $54, $9f, $4c, $f9, $5a, $e9, $51
+     21  1206		       59 1e 16 27*	      dc.b	$59, $1e, $16, $27, $01, $d4, $28, $b3, $92, $2b, $e0, $1a, $ba, $58, $7e, $07
+     22  1216		       66 9f da aa*	      dc.b	$66, $9f, $da, $aa, $a0
+     23  121b				   zx02_color_map
+     24  121b		       3f 01 f8 2f*	      dc.b	$3f, $01, $f8, $2f, $02, $fa, $0a, $05, $96, $1b, $d7, $29, $4e, $2b, $b5, $01
+     25  122b		       5a 2b d3 01*	      dc.b	$5a, $2b, $d3, $01, $be, $6a, $aa, $80
+------- FILE ./title_screen_zx02.s
+------- FILE bimgus_game.s
+     34  1233
+------- FILE ./title_theme.s LEVEL 2 PASS 3
+      0  1233					      include	"./title_theme.s"
+      1  1233							; title_theme.s
+      2  1233							;
+      3  1233							; playing the title theme song
+      4  1233
+      5  1233							; KERNAL addresses
+      6  1233		       90 0a	   SB	      =	$900a	; bass
+      7  1233		       90 0b	   SA	      =	$900b	; alto
+      8  1233		       90 0c	   SS	      =	$900c	; soprano
+      9  1233		       90 0d	   SN	      =	$900d	; noise
+     10  1233		       90 0e	   SV	      =	$900e	; volume
+     11  1233		       00 a2	   JC	      =	$00a2	; jiffy clock
+     12  1233
+     13  1233							; assembly program
+     14  1233					      subroutine
+     15  1233				   play_title_theme
+     16  1233		       a9 09		      lda	#9	; load accumulator with desired volume
+     17  1235		       8d 0e 90 	      sta	SV	; set speakers to that volume
+     18  1238		       a2 00		      ldx	#0	; store the offset in X register
+     19  123a		       8e 0d 90 	      stx	SN
+     20  123d							; main loop
+     21  123d				   .loop
+     22  123d							; play note
+     23  123d		       bd 79 12 	      lda	songb,X	; get the current bass note
+     24  1240		       8d 0a 90 	      sta	SB	; write the note to the bass speaker
+     25  1243		       bd b9 12 	      lda	songa,X	; get the current alto note
+     26  1246		       8d 0b 90 	      sta	SA	; write the note to the alto speaker
+     27  1249		       bd f9 12 	      lda	songs,X	; get the current soprano note
+     28  124c		       8d 0c 90 	      sta	SS	; write the note to the soprano speaker
+     29  124f							; check if we should exit on this note
+     30  124f		       bd 19 13 	      lda	duration,X	; load accumulator with duration of current note
+     31  1252		       f0 14		      beq	.restart_loop	; if duration is 0, exit the main loop
+     32  1254							; we should not exit on this note
+     33  1254		       18		      clc
+     34  1255		       65 a2		      adc	JC	; accumulator now stores the desired end time
+     35  1257							; wait until jiffy clock equals the value in the accumulator
+     36  1257				   .inner
+     37  1257							; check if we need to exit (player input)
+     38  1257		       a4 c5		      ldy	KEY_CURRENT
+     39  1259		       c0 40		      cpy	#$40
+     40  125b		       8c 10 1d 	      sty	KEY_LAST
+     41  125e		       d0 0d		      bne	.end_song
+     42  1260							; check if the note duration is elapsed
+     43  1260		       c5 a2		      cmp	JC
+     44  1262		       d0 f3		      bne	.inner
+     45  1264							; move on to the next note
+     46  1264		       e8		      inx		; increment the note offset (X register)
+     47  1265		       4c 3d 12 	      jmp	.loop	; restart main loop
+     48  1268							; cleanup
+     49  1268				   .restart_loop
+     50  1268		       a2 20		      ldx	#$20
+     51  126a		       4c 3d 12 	      jmp	.loop
+     52  126d				   .end_song
+     53  126d		       a9 00		      lda	#0
+     54  126f		       8d 0a 90 	      sta	SB
+     55  1272		       8d 0b 90 	      sta	SA
+     56  1275		       8d 0c 90 	      sta	SS
+     57  1278		       60		      rts
+     58  1279
+     59  1279							; define the song
+     60  1279		       00 00	   N0	      =	0
+     61  1279							; note values
+     62  1279				   songb
+     63  1279		       91 91 91 91*	      dc	D0,D0,D0,D0,C1,C1,Bb0,N0,N0,Bb0,Bb0,Bb0,C1,C1,G0,N0
+     64  1289		       91 91 91 91*	      dc	D0,D0,D0,D0,C1,C1,Bb0,N0,N0,Bb0,Bb0,Bb0,C1,C1,D0,N0
+     65  1299		       e0 e4 00 e4*	      dc	C2,D2,N0,D2,N0,D2,C2, D2,N0,D2, N0, D2, C2,D2,N0,D2
+     66  12a9		       e0 e4 00 e4*	      dc	C2,D2,N0,D2,N0,D2,C2, D2,N0,D2, N0, D2, A1,A1,N0,A1
+     67  12b9				   songa
+     68  12b9		       db db db db*	      dc	A1,A1,A1,A1,G1,G1,F1,N0,N0,F1,F1,F1,G1,G1,D2,N0
+     69  12c9		       db db db db*	      dc	A1,A1,A1,A1,G1,G1,F1,N0,N0,F1,F1,F1,G1,G1,A1,N0
+     70  12d9		       e0 e4 00 e4*	      dc	C2,D2,N0,D2,N0,D2,C2,D2,N0,D2,N0,D2,E2,F2,N0,F2
+     71  12e9		       e0 e4 00 e4*	      dc	C2,D2,N0,D2,N0,D2,C2,D2,N0,D2,N0,D2,G1,A1,G1,A1
+     72  12f9				   songs
+     73  12f9		       e4 e7 e8 eb*	      dc	D2,E2,F2,G2,E2,C2,D2,N0,C2,Bb1,C2,D2,C2,Bb1,A1,N0
+     74  1309		       e4 e7 e8 eb*	      dc	D2,E2,F2,G2,E2,C2,D2,N0,C2,Bb1,C2,D2,E2,C2, D2,N0
+     75  1319							; note value constants
+     76  1319		       00 91	   D0	      =	145
+     77  1319		       00 ae	   G0	      =	174
+     78  1319		       00 ba	   Bb0	      =	186
+     79  1319		       00 c3	   C1	      =	195
+     80  1319		       00 d1	   F1	      =	209
+     81  1319		       00 d6	   G1	      =	214
+     82  1319		       00 db	   A1	      =	219
+     83  1319		       00 dc	   Bb1	      =	220
+     84  1319		       00 e0	   C2	      =	224
+     85  1319		       00 e4	   D2	      =	228
+     86  1319		       00 e7	   E2	      =	231
+     87  1319		       00 e8	   F2	      =	232
+     88  1319		       00 eb	   G2	      =	235
+     89  1319
+     90  1319							; duration values (N0 is delimiter)
+     91  1319				   duration
+     92  1319		       0a 0a 0a 0a*	      dc	Ne, Ne, Ne, Ne, Nq, Ne, Nh+Ne, Nq, Nq, Nq, Ne, Ne, Nq, Ne, Nh+Ne, Nh
+     93  1329		       0a 0a 0a 0a*	      dc	Ne, Ne, Ne, Ne, Nq, Ne, Nh+Ne, Nq, Nq, Nq, Ne, Ne, Nq, Ne, Nh+Ne, Nh
+     94  1339		       0a 0a 0a 0a*	      dc	Ne, Ne, Ne, Ne, Ne, Ne, Ne, Ne, Ne, Ne, Ne, Ne, Ne, Ne, Ne, Ne
+     95  1349		       0a 0a 0a 0a*	      dc	Ne, Ne, Ne, Ne, Ne, Ne, Ne, Ne, Ne, Ne, Ne, Ne, Ne, Ne, Ne, Ne
+     96  1359		       00		      dc	N0
+     97  135a							; duration constants
+     98  135a		       00 28	   Nh	      =	40
+     99  135a		       00 14	   Nq	      =	20
+    100  135a		       00 0a	   Ne	      =	10
+------- FILE bimgus_game.s
+     36  135a
+------- FILE ./main_game.s LEVEL 2 PASS 3
+      0  135a					      include	"./main_game.s"
+      1  135a							; main game loop
+      2  135a
+      3  135a							; ram location
+      4  135a		       00 c5	   KEY_CURRENT =	$c5
+      5  135a		       00 a2	   JIFFY_CLOCK =	$a2	; the only byte that matters
+      6  135a
+      7  135a		       1c 00	   CHARACTER_RAM =	$1c00
+      8  135a		       1e 00	   SCREEN_RAM =	$1e00
+      9  135a		       96 00	   COLOR_RAM  =	$9600
+     10  135a
+     11  135a							; key code
+     12  135a		       00 20	   KEY_SPACE  =	$20
+     13  135a		       00 1f	   KEY_UP_DOWN =	$1f
+     14  135a		       00 17	   KEY_LEFT_RIGHT =	$17
+     15  135a		       00 0f	   KEY_ENTER  =	$0f
+     16  135a
+     17  135a							; screen code
+     18  135a		       00 00	   SCREEN_EMPTY =	0
+     19  135a		       00 01	   SCREEN_WALL =	1
+     20  135a		       00 02	   SCREEN_CRACK =	2
+     21  135a		       00 03	   SCREEN_BUSH =	3
+     22  135a		       00 04	   SCREEN_TANK_UP =	4
+     23  135a		       00 10	   SCREEN_BULLET_UP =	16
+     24  135a		       00 1c	   SCREEN_TANK_ROTATING_UP =	28
+     25  135a		       00 20	   SCREEN_AMMO =	32
+     26  135a
+     27  135a							; color code
+     28  135a		       00 00	   COLOR_BLACK =	0
+     29  135a		       00 01	   COLOR_WHITE =	1
+     30  135a		       00 02	   COLOR_RED  =	2
+     31  135a		       00 03	   COLOR_CYAN =	3
+     32  135a		       00 04	   COLOR_PURPLE =	4
+     33  135a		       00 05	   COLOR_GREEN =	5
+     34  135a		       00 06	   COLOR_BLUE =	6
+     35  135a		       00 07	   COLOR_YELLOW =	7
+     36  135a
+     37  135a							; rotation code
+     38  135a		       00 00	   ROTATION_UP =	0
+     39  135a		       00 01	   ROTATION_LEFT =	1
+     40  135a		       00 02	   ROTATION_DOWN =	2
+     41  135a		       00 03	   ROTATION_RIGHT =	3
+     42  135a
+     43  135a							; state mask
+     44  135a		       00 03	   STATE_ROTATION =	%11
+     45  135a		       00 04	   STATE_MOVING =	%100
+     46  135a		       00 08	   STATE_ROTATING =	%1000
+     47  135a		       00 10	   STATE_SHOOTING =	%10000
+     48  135a
+     49  135a							; offsets
+     50  135a		       00 04	   OFFSET_IB_LOWER =	4
+     51  135a		       00 08	   OFFSET_IB_UPPER =	8
+     52  135a
+     53  135a							; constants
+     54  135a		       00 16	   SCREEN_WIDTH =	22
+     55  135a		       00 45	   GAME_OFFSET =	69	; offset from start of screen ram to start of game
+     56  135a		       01 a5	   AMMO_OFFSET =	421	; offset from start of screen ram to where u should draw the ammo
+     57  135a		       00 10	   GAME_WIDTH =	16
+     58  135a		       00 10	   GAME_HEIGHT =	16
+     59  135a
+     60  135a							; zero page variables
+     61  135a							; zp
+     62  135a		       00 fd	   PTR_TEMP   =	$fd
+     63  135a		       00 ff	   TEMP       =	$ff
+     64  135a
+     65  135a							; zp
+     66  135a		       00 00	   PTR_SCREEN =	$00	; 2 bytes
+     67  135a		       00 02	   PTR_COLOR  =	$02	; 2 bytes
+     68  135a		       00 04	   SCREEN_CURRENT =	$04	; 1 byte
+     69  135a		       00 05	   COLOR_CURRENT =	$05	; 1 byte
+     70  135a
+     71  135a		       00 0f	   ODD_FRAME  =	$0f	; 1 byte
+     72  135a
+     73  135a							; used for draw and stuff
+     74  135a		       00 10	   STATE      =	$10	; 1 byte
+     75  135a		       00 11	   POSITION   =	$11	; 1 byte
+     76  135a		       00 12	   ROTATION   =	$12	; 1 byte
+     77  135a		       00 13	   FRONT      =	$13	; 1 byte
+     78  135a		       00 18	   NEIGHBOR_UP =	$18	; 1 byte
+     79  135a		       00 19	   NEIGHBOR_LEFT =	$19	; 1 byte
+     80  135a		       00 1a	   NEIGHBOR_DOWN =	$1a	; 1 byte
+     81  135a		       00 1b	   NEIGHBOR_RIGHT =	$1b	; 1 byte
+     82  135a
+     83  135a							; used for storing which level the player is currently on
+     84  135a		       00 26	   CURRENT_LEVEL =	$26
+     85  135a
+     86  135a							; used to load and store tank info
+     87  135a		       00 5f	   TANK_INDEX =	$5f	; 1 byte
+     88  135a		       00 50	   TANK_STATE =	$50	; 1 byte
+     89  135a		       00 51	   TANK_POSITION =	$51	; 1 byte
+     90  135a		       00 52	   BULLET_POSITION =	$52	; 1 byte
+     91  135a		       00 53	   TANK_FRONT =	$53	; 1 byte
+     92  135a		       00 54	   BULLET_FRONT =	$54	; 1 byte
+     93  135a		       00 55	   BULLET_BEHIND =	$55	; 1 byte
+     94  135a		       00 56	   TANK_DETAIL =	$56	; 1 byte
+     95  135a
+     96  135a							; for nested loop
+     97  135a		       00 5e	   OTHER_TANK_INDEX =	$5e	; 1 byte
+     98  135a		       00 58	   OTHER_TANK_STATE =	$58	; 1 byte
+     99  135a		       00 59	   OTHER_TANK_POSITION =	$59	; 1 byte
+    100  135a		       00 5a	   OTHER_BULLET_POSITION =	$5a	; 1 byte
+    101  135a
+    102  135a		       00 60	   TARGET     =	$60	; 1 byte
+    103  135a		       00 61	   IN_LOS     =	$61	; 1 byte
+    104  135a
+    105  135a		       00 70	   ENEMY_LEFT =	$70	; 1 byte
+    106  135a
+    107 U1d77 ????				      seg.u	local_level_data_zone
+    108 U1d10					      org	$1d10
+    109 U1d10							; local variables
+    110 U1d10				   KEY_LAST
+    111 U1d10		       00		      ds.b	1
+    112 U1d11				   JIFFY_BIT_LAST
+    113 U1d11		       00		      ds.b	1
+    114 U1d12				   SHOOTING_BIT_LAST
+    115 U1d12		       00		      ds.b	1
+    116 U1d13							; current level data
+    117 U1d13				   level_state
+    118 U1d13				   tile_data
+    119 U1d13		       00 00 00 00*	      ds.b	64
+    120 U1d53				   tank_state		; %e-csmrRR
+    121 U1d53				   PLAYER_STATE
+    122 U1d53		       00		      ds.b	1
+    123 U1d54				   ENEMY_STATE
+    124 U1d54		       00 00 00 00*	      ds.b	8
+    125 U1d5c				   tank_position
+    126 U1d5c				   PLAYER_POSITION
+    127 U1d5c		       00		      ds.b	1	; $yyxx
+    128 U1d5d				   ENEMY_POSITION
+    129 U1d5d		       00 00 00 00*	      ds.b	8
+    130 U1d65				   PLAYER_AMMO
+    131 U1d65		       00		      ds.b	1
+    132 U1d66				   ENEMY_DETAIL
+    133 U1d66		       00 00 00 00*	      ds.b	8	;
+    134 U1d6e							; end of level data
+    135 U1d6e				   bullet_position
+    136 U1d6e				   PLAYER_BULLET
+    137 U1d6e		       00		      ds.b	1
+    138 U1d6f				   ENEMY_BULLET
+    139 U1d6f		       00 00 00 00*	      ds.b	8
+    140  135a					      seg
+    141  135a
+    142  135a					      subroutine
+    143  135a				   main_game
+    144  135a		       a9 5a		      lda	#<game_char_set
+    145  135c		       85 89		      sta	ini
+    146  135e		       a9 10		      lda	#>game_char_set
+    147  1360		       85 8a		      sta	ini+1
+    148  1362		       20 68 10 	      jsr	full_decomp
+    149  1365
+    150  1365		       a9 ff		      lda	#$ff
+    151  1367		       85 26		      sta	CURRENT_LEVEL
+    152  1369
+    153  1369				   .next_level
+    154  1369		       e6 26		      inc	CURRENT_LEVEL
+    155  136b		       a5 26		      lda	CURRENT_LEVEL
+    156  136d		       0a		      asl
+    157  136e		       aa		      tax
+    158  136f		       bd 5b 16 	      lda	level_data_table,X
+    159  1372		       8d 63 10 	      sta	game_level_block_begin
+    160  1375		       bd 5c 16 	      lda	level_data_table+1,X
+    161  1378		       8d 64 10 	      sta	game_level_block_begin+1
+    162  137b
+    163  137b				   .load_level
+    164  137b		       20 7e 1a 	      jsr	clear_screen
+    165  137e
+    166  137e		       a5 26		      lda	CURRENT_LEVEL
+    167  1380		       c9 07		      cmp	#NUM_LEVELS
+    168  1382		       d0 01		      bne	.continue_load
+    169  1384		       60		      rts
+    170  1385				   .continue_load
+    171  1385		       a9 61		      lda	#<game_level_block
+    172  1387		       85 89		      sta	ini
+    173  1389		       a9 10		      lda	#>game_level_block
+    174  138b		       85 8a		      sta	ini+1
+    175  138d		       20 68 10 	      jsr	full_decomp
+    176  1390
+    177  1390		       a9 01		      lda	#1
+    178  1392		       85 0f		      sta	ODD_FRAME
+    179  1394
+    180  1394		       20 41 1a 	      jsr	draw_tile
+    181  1397		       a9 40		      lda	#$40
+    182  1399		       85 c5		      sta	KEY_CURRENT
+    183  139b							;sta KEY_LAST
+    184  139b		       4c c1 13 	      jmp	.update_start
+    185  139e
+    186  139e				   .mg_loop
+    187  139e		       ad 53 1d 	      lda	PLAYER_STATE
+    188  13a1		       29 10		      and	#STATE_SHOOTING
+    189  13a3		       f0 0f		      beq	.not_shooting
+    190  13a5		       a5 a2		      lda	JIFFY_CLOCK
+    191  13a7		       29 04		      and	#%100
+    192  13a9		       cd 11 1d 	      cmp	JIFFY_BIT_LAST
+    193  13ac		       8d 11 1d 	      sta	JIFFY_BIT_LAST
+    194  13af		       d0 10		      bne	.update_start
+    195  13b1		       4c 85 14 	      jmp	.skip_update
+    196  13b4				   .not_shooting
+    197  13b4
+    198  13b4
+    199  13b4		       a5 c5		      lda	KEY_CURRENT
+    200  13b6		       cd 10 1d 	      cmp	KEY_LAST
+    201  13b9		       8d 10 1d 	      sta	KEY_LAST
+    202  13bc		       d0 03		      bne	.update_start
+    203  13be		       4c 85 14 	      jmp	.skip_update
+    204  13c1
+    205  13c1				   .update_start
+    206  13c1
+    207  13c1		       a6 c5		      ldx	KEY_CURRENT
+    208  13c3		       e0 0f		      cpx	#KEY_ENTER
+    209  13c5		       d0 03		      bne	.not_cheat_key_enter
+    210  13c7		       4c 69 13 	      jmp	.next_level
+    211  13ca				   .not_cheat_key_enter
+    212  13ca
+    213  13ca		       e6 0f		      inc	ODD_FRAME
+    214  13cc		       a5 0f		      lda	ODD_FRAME
+    215  13ce		       29 01		      and	#1
+    216  13d0		       85 0f		      sta	ODD_FRAME
+    217  13d2
+    218  13d2		       20 fc 1a 	      jsr	reset_sfx_bitmask
+    219  13d5
+    220  13d5		       a9 ff		      lda	#$ff
+    221  13d7		       85 5e		      sta	OTHER_TANK_INDEX
+    222  13d9		       a9 00		      lda	#0
+    223  13db		       85 5f		      sta	TANK_INDEX
+    224  13dd		       20 3b 19 	      jsr	load_tank
+    225  13e0		       a5 50		      lda	TANK_STATE
+    226  13e2		       30 97		      bmi	.load_level	; game_over
+    227  13e4
+    228  13e4		       a9 00		      lda	#0
+    229  13e6		       85 70		      sta	ENEMY_LEFT
+    230  13e8		       a9 08		      lda	#8
+    231  13ea		       85 5f		      sta	TANK_INDEX
+    232  13ec				   .move_loop
+    233  13ec		       20 3b 19 	      jsr	load_tank
+    234  13ef		       a5 50		      lda	TANK_STATE
+    235  13f1		       30 08		      bmi	.skip_move_tank
+    236  13f3		       e6 70		      inc	ENEMY_LEFT
+    237  13f5		       20 6c 16 	      jsr	move_tank
+    238  13f8		       20 94 19 	      jsr	store_tank
+    239  13fb				   .skip_move_tank
+    240  13fb		       c6 5f		      dec	TANK_INDEX
+    241  13fd		       10 ed		      bpl	.move_loop
+    242  13ff
+    243  13ff		       c6 70		      dec	ENEMY_LEFT
+    244  1401		       d0 03		      bne	.no_win
+    245  1403		       4c 69 13 	      jmp	.next_level	; you win
+    246  1406				   .no_win
+    247  1406
+    248  1406		       ad 53 1d 	      lda	PLAYER_STATE
+    249  1409		       29 10		      and	#STATE_SHOOTING
+    250  140b		       d0 08		      bne	.no_lose	; player not shooting
+    251  140d		       ad 65 1d 	      lda	PLAYER_AMMO
+    252  1410		       d0 03		      bne	.no_lose
+    253  1412		       4c 7b 13 	      jmp	.load_level	; out of ammo
+    254  1415				   .no_lose
+    255  1415
+    256  1415		       a9 08		      lda	#8
+    257  1417		       85 5f		      sta	TANK_INDEX
+    258  1419				   .collide_tank_loop
+    259  1419		       20 3b 19 	      jsr	load_tank
+    260  141c		       a5 50		      lda	TANK_STATE
+    261  141e		       30 07		      bmi	.skip_collide_tank	; tank not exist
+    262  1420		       29 10		      and	#STATE_SHOOTING
+    263  1422		       f0 03		      beq	.skip_collide_tank	; not shooting
+    264  1424		       20 d8 17 	      jsr	collide_tank
+    265  1427				   .skip_collide_tank
+    266  1427		       c6 5f		      dec	TANK_INDEX
+    267  1429		       10 ee		      bpl	.collide_tank_loop
+    268  142b
+    269  142b		       a9 08		      lda	#8
+    270  142d		       85 5f		      sta	TANK_INDEX
+    271  142f				   .collide_bullet_loop
+    272  142f		       20 3b 19 	      jsr	load_tank
+    273  1432		       a5 50		      lda	TANK_STATE
+    274  1434		       30 07		      bmi	.skip_collide_bullet	; tank not exist
+    275  1436		       29 10		      and	#STATE_SHOOTING
+    276  1438		       f0 03		      beq	.skip_collide_bullet	; not shooting
+    277  143a		       20 18 18 	      jsr	collide_bullet
+    278  143d				   .skip_collide_bullet
+    279  143d		       c6 5f		      dec	TANK_INDEX
+    280  143f		       10 ee		      bpl	.collide_bullet_loop
+    281  1441
+    282  1441		       a9 08		      lda	#8
+    283  1443		       85 5f		      sta	TANK_INDEX
+    284  1445				   .draw_loop
+    285  1445		       20 3b 19 	      jsr	load_tank
+    286  1448		       a5 50		      lda	TANK_STATE
+    287  144a		       30 03		      bmi	.skip_draw_tank
+    288  144c		       20 5c 18 	      jsr	draw_tank
+    289  144f				   .skip_draw_tank
+    290  144f		       c6 5f		      dec	TANK_INDEX
+    291  1451		       10 f2		      bpl	.draw_loop
+    292  1453
+    293  1453		       a9 a5		      lda	#<SCREEN_RAM+<AMMO_OFFSET
+    294  1455		       85 00		      sta	PTR_SCREEN
+    295  1457		       a9 1f		      lda	#>SCREEN_RAM+>AMMO_OFFSET
+    296  1459		       85 01		      sta	PTR_SCREEN+1
+    297  145b		       a9 a5		      lda	#<COLOR_RAM+<AMMO_OFFSET
+    298  145d		       85 02		      sta	PTR_COLOR
+    299  145f		       a9 97		      lda	#>COLOR_RAM+>AMMO_OFFSET
+    300  1461		       85 03		      sta	PTR_COLOR+1
+    301  1463		       a0 0f		      ldy	#16-1
+    302  1465				   .clean_ammo_area_loop
+    303  1465		       a9 00		      lda	#SCREEN_EMPTY
+    304  1467		       85 04		      sta	SCREEN_CURRENT
+    305  1469		       a9 07		      lda	#COLOR_YELLOW
+    306  146b		       85 05		      sta	COLOR_CURRENT
+    307  146d		       20 ae 1a 	      jsr	draw_screen
+    308  1470		       88		      dey
+    309  1471		       10 f2		      bpl	.clean_ammo_area_loop
+    310  1473		       ac 65 1d 	      ldy	PLAYER_AMMO
+    311  1476		       88		      dey
+    312  1477				   .draw_ammo_loop
+    313  1477		       a9 20		      lda	#SCREEN_AMMO
+    314  1479		       85 04		      sta	SCREEN_CURRENT
+    315  147b		       a9 07		      lda	#COLOR_YELLOW
+    316  147d		       85 05		      sta	COLOR_CURRENT
+    317  147f		       20 ae 1a 	      jsr	draw_screen
+    318  1482		       88		      dey
+    319  1483		       10 f2		      bpl	.draw_ammo_loop
+    320  1485
+    321  1485				   .skip_update
+    322  1485		       4c 9e 13 	      jmp	.mg_loop
+    323  1488
+    324  1488				   sprite_data
+    325  1488					      incbin	"./data/sprite_data.zx02"
+    326  1538				   sprite_data_end
+    327  1538
+------- FILE ./zx02_level_data.s LEVEL 3 PASS 3
+      0  1538					      include	"./zx02_level_data.s"
+      1  1538				   level_1_data
+      2  1538					      incbin	"./data/level_1_data.zx02"
+      3  1559				   level_2_data
+      4  1559					      incbin	"./data/level_2_data.zx02"
+      5  1585				   level_3_data
+      6  1585					      incbin	"./data/level_3_data.zx02"
+      7  15a7				   level_4_data
+      8  15a7					      incbin	"./data/level_4_data.zx02"
+      9  15c5				   level_5_data
+     10  15c5					      incbin	"./data/level_5_data.zx02"
+     11  15fc				   level_6_data
+     12  15fc					      incbin	"./data/level_6_data.zx02"
+     13  1625				   level_7_data
+     14  1625					      incbin	"./data/level_7_data.zx02"
+     15  165b				   level_data_table
+     16  165b		       38 15		      dc.w	level_1_data
+     17  165d		       59 15		      dc.w	level_2_data
+     18  165f		       85 15		      dc.w	level_3_data
+     19  1661		       a7 15		      dc.w	level_4_data
+     20  1663		       c5 15		      dc.w	level_5_data
+     21  1665		       fc 15		      dc.w	level_6_data
+     22  1667		       25 16		      dc.w	level_7_data
+     23  1667		       00 07	   NUM_LEVELS =	7
+------- FILE ./main_game.s
+    329  1669
+    330  1669		       4c 7b 13 	      jmp	.load_level	; you win
+    331  166c
+    332  166c
+    333  166c					      subroutine
+    334  166c				   move_tank
+    335  166c
+    336  166c		       a5 50		      lda	TANK_STATE
+    337  166e		       29 10		      and	#STATE_SHOOTING
+    338  1670		       f0 03		      beq	.not_shooting
+    339  1672		       4c 69 17 	      jmp	.shooting
+    340  1675				   .not_shooting
+    341  1675		       a5 50		      lda	TANK_STATE
+    342  1677		       29 08		      and	#STATE_ROTATING
+    343  1679		       f0 03		      beq	.not_rotating
+    344  167b		       4c 5e 17 	      jmp	.rotating
+    345  167e				   .not_rotating
+    346  167e		       a5 50		      lda	TANK_STATE
+    347  1680		       29 04		      and	#STATE_MOVING
+    348  1682		       f0 03		      beq	.not_moving
+    349  1684		       4c 41 17 	      jmp	.moving
+    350  1687				   .not_moving
+    351  1687
+    352  1687		       a6 5f		      ldx	TANK_INDEX
+    353  1689		       d0 24		      bne	.not_player
+    354  168b				   .read_key
+    355  168b		       a6 c5		      ldx	KEY_CURRENT
+    356  168d		       a5 50		      lda	TANK_STATE
+    357  168f		       e0 1f		      cpx	#KEY_UP_DOWN
+    358  1691		       d0 05		      bne	.not_up_down
+    359  1693		       20 b3 1b 	      jsr	player_movement
+    360  1696		       09 04		      ora	#STATE_MOVING
+    361  1698				   .not_up_down
+    362  1698		       e0 17		      cpx	#KEY_LEFT_RIGHT
+    363  169a		       d0 05		      bne	.not_left_right
+    364  169c		       20 b3 1b 	      jsr	player_movement
+    365  169f		       09 08		      ora	#STATE_ROTATING
+    366  16a1				   .not_left_right
+    367  16a1		       e0 20		      cpx	#KEY_SPACE
+    368  16a3		       d0 05		      bne	.not_space
+    369  16a5		       20 83 1b 	      jsr	sfx_bullet
+    370  16a8		       09 14		      ora	#STATE_SHOOTING|STATE_MOVING
+    371  16aa				   .not_space
+    372  16aa		       85 50		      sta	TANK_STATE
+    373  16ac		       4c 19 17 	      jmp	.check_front
+    374  16af				   .not_player
+    375  16af
+    376  16af		       a5 0f		      lda	ODD_FRAME
+    377  16b1		       f0 66		      beq	.skip_odd_frame
+    378  16b3		       20 9a 18 	      jsr	check_los
+    379  16b6
+    380  16b6		       a6 56		      ldx	TANK_DETAIL
+    381  16b8		       d0 09		      bne	.not_basic_shoot
+    382  16ba		       a5 50		      lda	TANK_STATE
+    383  16bc		       09 14		      ora	#STATE_SHOOTING|STATE_MOVING
+    384  16be		       85 50		      sta	TANK_STATE
+    385  16c0		       4c 19 17 	      jmp	.check_front
+    386  16c3				   .not_basic_shoot
+    387  16c3
+    388  16c3		       ca		      dex
+    389  16c4		       d0 0d		      bne	.not_basic_detect
+    390  16c6		       a5 61		      lda	IN_LOS
+    391  16c8		       f0 06		      beq	.not_in_los_0
+    392  16ca		       a5 50		      lda	TANK_STATE
+    393  16cc		       09 14		      ora	#STATE_SHOOTING|STATE_MOVING
+    394  16ce		       85 50		      sta	TANK_STATE
+    395  16d0				   .not_in_los_0
+    396  16d0		       4c 19 17 	      jmp	.check_front
+    397  16d3				   .not_basic_detect
+    398  16d3
+    399  16d3		       ca		      dex
+    400  16d4		       d0 16		      bne	.not_rotate_detect
+    401  16d6		       a5 61		      lda	IN_LOS
+    402  16d8		       f0 09		      beq	.not_in_los_1
+    403  16da		       a5 50		      lda	TANK_STATE
+    404  16dc		       09 14		      ora	#STATE_SHOOTING|STATE_MOVING
+    405  16de		       85 50		      sta	TANK_STATE
+    406  16e0		       4c 19 17 	      jmp	.check_front
+    407  16e3				   .not_in_los_1
+    408  16e3		       a5 50		      lda	TANK_STATE
+    409  16e5		       09 08		      ora	#STATE_ROTATING
+    410  16e7		       85 50		      sta	TANK_STATE
+    411  16e9		       4c 19 17 	      jmp	.check_front
+    412  16ec				   .not_rotate_detect
+    413  16ec
+    414  16ec		       ca		      dex
+    415  16ed		       d0 2a		      bne	.not_move_detect
+    416  16ef		       a5 53		      lda	TANK_FRONT
+    417  16f1		       85 11		      sta	POSITION
+    418  16f3		       20 fe 19 	      jsr	read_target
+    419  16f6		       a5 60		      lda	TARGET
+    420  16f8		       d0 16		      bne	.have_to_rotate
+    421  16fa		       a5 61		      lda	IN_LOS
+    422  16fc		       f0 09		      beq	.not_in_los_2
+    423  16fe		       a5 50		      lda	TANK_STATE
+    424  1700		       09 14		      ora	#STATE_SHOOTING|STATE_MOVING
+    425  1702		       85 50		      sta	TANK_STATE
+    426  1704		       4c 19 17 	      jmp	.check_front
+    427  1707				   .not_in_los_2
+    428  1707		       a5 50		      lda	TANK_STATE
+    429  1709		       09 04		      ora	#STATE_MOVING
+    430  170b		       85 50		      sta	TANK_STATE
+    431  170d		       4c 19 17 	      jmp	.check_front
+    432  1710				   .have_to_rotate
+    433  1710		       a5 50		      lda	TANK_STATE
+    434  1712		       09 08		      ora	#STATE_ROTATING
+    435  1714		       85 50		      sta	TANK_STATE
+    436  1716		       4c 19 17 	      jmp	.check_front
+    437  1719				   .not_move_detect
+    438  1719
+    439  1719				   .skip_odd_frame
+    440  1719
+    441  1719				   .check_front
+    442  1719		       a5 53		      lda	TANK_FRONT
+    443  171b		       85 11		      sta	POSITION
+    444  171d		       20 fe 19 	      jsr	read_target
+    445  1720
+    446  1720		       a5 60		      lda	TARGET
+    447  1722		       f0 10		      beq	.not_blocked
+    448  1724		       c9 01		      cmp	#SCREEN_WALL
+    449  1726		       d0 06		      bne	.not_wall
+    450  1728		       a5 50		      lda	TANK_STATE
+    451  172a		       29 eb		      and	#$ff^(STATE_MOVING|STATE_SHOOTING)
+    452  172c		       85 50		      sta	TANK_STATE
+    453  172e				   .not_wall
+    454  172e		       a5 50		      lda	TANK_STATE
+    455  1730		       29 fb		      and	#$ff^STATE_MOVING
+    456  1732		       85 50		      sta	TANK_STATE
+    457  1734				   .not_blocked
+    458  1734
+    459  1734		       a5 50		      lda	TANK_STATE
+    460  1736		       29 10		      and	#STATE_SHOOTING
+    461  1738		       f0 04		      beq	.skip_shooting
+    462  173a
+    463  173a		       a5 51		      lda	TANK_POSITION
+    464  173c		       85 52		      sta	BULLET_POSITION
+    465  173e
+    466  173e				   .skip_shooting
+    467  173e
+    468  173e		       4c c2 17 	      jmp	.finish_moving
+    469  1741
+    470  1741				   .moving
+    471  1741		       a5 51		      lda	TANK_POSITION
+    472  1743		       85 11		      sta	POSITION
+    473  1745		       20 b7 1a 	      jsr	position2screen
+    474  1748		       a0 00		      ldy	#0
+    475  174a		       a9 00		      lda	#SCREEN_EMPTY
+    476  174c		       85 04		      sta	SCREEN_CURRENT
+    477  174e		       20 ae 1a 	      jsr	draw_screen
+    478  1751
+    479  1751		       a5 53		      lda	TANK_FRONT
+    480  1753		       85 51		      sta	TANK_POSITION
+    481  1755		       a5 50		      lda	TANK_STATE
+    482  1757		       29 03		      and	#STATE_ROTATION
+    483  1759		       85 50		      sta	TANK_STATE
+    484  175b		       4c c2 17 	      jmp	.finish_moving
+    485  175e
+    486  175e				   .rotating
+    487  175e		       e6 50		      inc	TANK_STATE
+    488  1760		       a5 50		      lda	TANK_STATE
+    489  1762		       29 03		      and	#STATE_ROTATION
+    490  1764		       85 50		      sta	TANK_STATE
+    491  1766		       4c c2 17 	      jmp	.finish_moving
+    492  1769
+    493  1769				   .shooting
+    494  1769		       a5 50		      lda	TANK_STATE
+    495  176b		       29 04		      and	#STATE_MOVING
+    496  176d		       d0 3f		      bne	.bullet_moving
+    497  176f
+    498  176f		       a5 54		      lda	BULLET_FRONT
+    499  1771		       85 11		      sta	POSITION
+    500  1773		       20 fe 19 	      jsr	read_target
+    501  1776		       a5 60		      lda	TARGET
+    502  1778		       c9 02		      cmp	#SCREEN_CRACK
+    503  177a		       d0 13		      bne	.no_crack
+    504  177c		       20 08 1a 	      jsr	empty_position
+    505  177f		       a5 50		      lda	TANK_STATE
+    506  1781		       29 ef		      and	#$ff^STATE_SHOOTING
+    507  1783		       85 50		      sta	TANK_STATE
+    508  1785		       a5 52		      lda	BULLET_POSITION
+    509  1787		       85 11		      sta	POSITION
+    510  1789		       20 08 1a 	      jsr	empty_position
+    511  178c		       4c c2 17 	      jmp	.finish_moving
+    512  178f				   .no_crack
+    513  178f		       a5 60		      lda	TARGET
+    514  1791		       c9 01		      cmp	#SCREEN_WALL
+    515  1793		       d0 10		      bne	.no_wall
+    516  1795		       a5 50		      lda	TANK_STATE
+    517  1797		       29 ef		      and	#$ff^STATE_SHOOTING
+    518  1799		       85 50		      sta	TANK_STATE
+    519  179b		       a5 52		      lda	BULLET_POSITION
+    520  179d		       85 11		      sta	POSITION
+    521  179f		       20 08 1a 	      jsr	empty_position
+    522  17a2		       4c c2 17 	      jmp	.finish_moving
+    523  17a5				   .no_wall
+    524  17a5		       a5 50		      lda	TANK_STATE
+    525  17a7		       09 04		      ora	#STATE_MOVING
+    526  17a9		       85 50		      sta	TANK_STATE
+    527  17ab		       4c c2 17 	      jmp	.finish_moving
+    528  17ae
+    529  17ae				   .bullet_moving
+    530  17ae		       a5 52		      lda	BULLET_POSITION
+    531  17b0		       85 11		      sta	POSITION
+    532  17b2		       20 08 1a 	      jsr	empty_position
+    533  17b5
+    534  17b5		       a5 54		      lda	BULLET_FRONT
+    535  17b7		       85 52		      sta	BULLET_POSITION
+    536  17b9		       a5 50		      lda	TANK_STATE
+    537  17bb		       29 13		      and	#STATE_ROTATION|STATE_SHOOTING
+    538  17bd		       85 50		      sta	TANK_STATE
+    539  17bf		       4c c2 17 	      jmp	.finish_moving
+    540  17c2				   .finish_moving
+    541  17c2		       ad 53 1d 	      lda	PLAYER_STATE
+    542  17c5		       29 10		      and	#STATE_SHOOTING
+    543  17c7		       cd 12 1d 	      cmp	SHOOTING_BIT_LAST
+    544  17ca		       8d 12 1d 	      sta	SHOOTING_BIT_LAST
+    545  17cd		       f0 08		      beq	.player_not_just_shot
+    546  17cf		       ad 12 1d 	      lda	SHOOTING_BIT_LAST
+    547  17d2		       f0 03		      beq	.player_not_just_shot
+    548  17d4		       ce 65 1d 	      dec	PLAYER_AMMO
+    549  17d7				   .player_not_just_shot
+    550  17d7		       60		      rts
+    551  17d8
+    552  17d8
+    553  17d8					      subroutine
+    554  17d8				   collide_tank
+    555  17d8		       a9 08		      lda	#8
+    556  17da		       85 5e		      sta	OTHER_TANK_INDEX
+    557  17dc				   .inner_collision_loop
+    558  17dc		       20 3b 19 	      jsr	load_tank
+    559  17df		       a5 5e		      lda	OTHER_TANK_INDEX
+    560  17e1		       c5 5f		      cmp	TANK_INDEX
+    561  17e3		       f0 2e		      beq	.skip_current_tank	; same tank
+    562  17e5		       a5 58		      lda	OTHER_TANK_STATE
+    563  17e7		       30 2a		      bmi	.skip_current_tank	; tank not exist
+    564  17e9		       a5 59		      lda	OTHER_TANK_POSITION
+    565  17eb		       c5 52		      cmp	BULLET_POSITION
+    566  17ed		       d0 21		      bne	.not_collide_tank	; tank does not collide
+    567  17ef		       a5 58		      lda	OTHER_TANK_STATE
+    568  17f1		       29 10		      and	#STATE_SHOOTING
+    569  17f3		       f0 07		      beq	.shot_tank_not_shooting
+    570  17f5		       a5 5a		      lda	OTHER_BULLET_POSITION
+    571  17f7		       85 11		      sta	POSITION
+    572  17f9		       20 08 1a 	      jsr	empty_position
+    573  17fc				   .shot_tank_not_shooting
+    574  17fc		       a9 ff		      lda	#$ff
+    575  17fe		       85 58		      sta	OTHER_TANK_STATE
+    576  1800		       a5 59		      lda	OTHER_TANK_POSITION
+    577  1802		       85 11		      sta	POSITION
+    578  1804		       20 08 1a 	      jsr	empty_position
+    579  1807		       a5 50		      lda	TANK_STATE
+    580  1809		       29 03		      and	#STATE_ROTATION
+    581  180b		       85 50		      sta	TANK_STATE
+    582  180d		       20 01 1b 	      jsr	playerExplosion
+    583  1810				   .not_collide_tank
+    584  1810		       20 94 19 	      jsr	store_tank
+    585  1813				   .skip_current_tank
+    586  1813		       c6 5e		      dec	OTHER_TANK_INDEX
+    587  1815		       10 c5		      bpl	.inner_collision_loop
+    588  1817		       60		      rts
+    589  1818
+    590  1818
+    591  1818					      subroutine
+    592  1818				   collide_bullet
+    593  1818		       a9 08		      lda	#8
+    594  181a		       85 5e		      sta	OTHER_TANK_INDEX
+    595  181c				   .inner_collision_loop
+    596  181c		       20 3b 19 	      jsr	load_tank
+    597  181f		       a5 5e		      lda	OTHER_TANK_INDEX
+    598  1821		       c5 5f		      cmp	TANK_INDEX
+    599  1823		       f0 32		      beq	.skip_current_tank	; same tank
+    600  1825		       a5 58		      lda	OTHER_TANK_STATE
+    601  1827		       30 2e		      bmi	.skip_current_tank	; tank not exist
+    602  1829		       29 10		      and	#STATE_SHOOTING
+    603  182b		       f0 2a		      beq	.skip_current_tank	; tank not shooting
+    604  182d		       a5 5a		      lda	OTHER_BULLET_POSITION
+    605  182f		       c5 52		      cmp	BULLET_POSITION
+    606  1831		       f0 07		      beq	.collide_bullet	; bullet does not collide
+    607  1833		       c5 55		      cmp	BULLET_BEHIND
+    608  1835		       f0 03		      beq	.collide_bullet	; bullet does not collide
+    609  1837		       4c 57 18 	      jmp	.skip_current_tank
+    610  183a				   .collide_bullet
+    611  183a		       a5 58		      lda	OTHER_TANK_STATE
+    612  183c		       29 03		      and	#STATE_ROTATION
+    613  183e		       85 58		      sta	OTHER_TANK_STATE
+    614  1840		       a5 50		      lda	TANK_STATE
+    615  1842		       29 03		      and	#STATE_ROTATION
+    616  1844		       85 50		      sta	TANK_STATE
+    617  1846		       a5 5a		      lda	OTHER_BULLET_POSITION
+    618  1848		       85 11		      sta	POSITION
+    619  184a		       20 08 1a 	      jsr	empty_position
+    620  184d		       a5 52		      lda	BULLET_POSITION
+    621  184f		       85 11		      sta	POSITION
+    622  1851		       20 08 1a 	      jsr	empty_position
+    623  1854		       20 94 19 	      jsr	store_tank
+    624  1857				   .skip_current_tank
+    625  1857		       c6 5e		      dec	OTHER_TANK_INDEX
+    626  1859		       10 c1		      bpl	.inner_collision_loop
+    627  185b		       60		      rts
+    628  185c
+    629  185c
+    630  185c					      subroutine
+    631  185c				   draw_tank
+    632  185c
+    633  185c		       a9 10		      lda	#SCREEN_BULLET_UP
+    634  185e		       85 04		      sta	SCREEN_CURRENT
+    635  1860
+    636  1860		       a6 5f		      ldx	TANK_INDEX
+    637  1862		       d0 07		      bne	.not_drawing_player
+    638  1864		       a9 05		      lda	#COLOR_GREEN
+    639  1866		       85 05		      sta	COLOR_CURRENT
+    640  1868		       4c 6f 18 	      jmp	.drawing_drawing
+    641  186b				   .not_drawing_player
+    642  186b		       a9 02		      lda	#COLOR_RED
+    643  186d		       85 05		      sta	COLOR_CURRENT
+    644  186f
+    645  186f				   .drawing_drawing
+    646  186f		       a5 50		      lda	TANK_STATE
+    647  1871		       29 10		      and	#STATE_SHOOTING
+    648  1873		       f0 11		      beq	.skip_drawing_bullet
+    649  1875		       a5 50		      lda	TANK_STATE
+    650  1877		       29 ef		      and	#$ff^STATE_SHOOTING
+    651  1879		       85 10		      sta	STATE
+    652  187b		       a5 52		      lda	BULLET_POSITION
+    653  187d		       85 11		      sta	POSITION
+    654  187f		       a5 54		      lda	BULLET_FRONT
+    655  1881		       85 13		      sta	FRONT
+    656  1883		       20 b9 19 	      jsr	draw_entity
+    657  1886				   .skip_drawing_bullet
+    658  1886
+    659  1886		       a9 04		      lda	#SCREEN_TANK_UP
+    660  1888		       85 04		      sta	SCREEN_CURRENT
+    661  188a		       a5 50		      lda	TANK_STATE
+    662  188c		       85 10		      sta	STATE
+    663  188e		       a5 51		      lda	TANK_POSITION
+    664  1890		       85 11		      sta	POSITION
+    665  1892		       a5 53		      lda	TANK_FRONT
+    666  1894		       85 13		      sta	FRONT
+    667  1896		       20 b9 19 	      jsr	draw_entity
+    668  1899				   .finish_drawing
+    669  1899		       60		      rts
+    670  189a
+    671  189a
+    672  189a							; zp
+    673  189a		       00 ff	   TARGET_POSITION =	TEMP
+    674  189a
+    675  189a					      subroutine
+    676  189a				   check_los
+    677  189a
+    678  189a		       a9 00		      lda	#0
+    679  189c		       85 61		      sta	IN_LOS	;
+    680  189e		       a5 50		      lda	TANK_STATE
+    681  18a0		       29 03		      and	#STATE_ROTATION
+    682  18a2		       aa		      tax
+    683  18a3		       d0 23		      bne	.not_up
+    684  18a5
+    685  18a5		       ad 5c 1d 	      lda	PLAYER_POSITION
+    686  18a8		       29 0f		      and	#$f
+    687  18aa		       85 ff		      sta	TARGET_POSITION
+    688  18ac		       a5 51		      lda	TANK_POSITION
+    689  18ae		       29 0f		      and	#$f
+    690  18b0		       c5 ff		      cmp	TARGET_POSITION
+    691  18b2		       d0 11		      bne	.not_target_up
+    692  18b4
+    693  18b4		       ad 5c 1d 	      lda	PLAYER_POSITION
+    694  18b7		       29 f0		      and	#$f0
+    695  18b9		       85 ff		      sta	TARGET_POSITION
+    696  18bb		       a5 51		      lda	TANK_POSITION
+    697  18bd		       29 f0		      and	#$f0
+    698  18bf		       c5 ff		      cmp	TARGET_POSITION
+    699  18c1		       30 02		      bmi	.not_target_up
+    700  18c3		       e6 61		      inc	IN_LOS
+    701  18c5				   .not_target_up
+    702  18c5		       4c 3a 19 	      jmp	.done_check
+    703  18c8				   .not_up
+    704  18c8		       ca		      dex
+    705  18c9		       d0 23		      bne	.not_left
+    706  18cb
+    707  18cb		       ad 5c 1d 	      lda	PLAYER_POSITION
+    708  18ce		       29 f0		      and	#$f0
+    709  18d0		       85 ff		      sta	TARGET_POSITION
+    710  18d2		       a5 51		      lda	TANK_POSITION
+    711  18d4		       29 f0		      and	#$f0
+    712  18d6		       c5 ff		      cmp	TARGET_POSITION
+    713  18d8		       d0 11		      bne	.not_target_left
+    714  18da
+    715  18da		       ad 5c 1d 	      lda	PLAYER_POSITION
+    716  18dd		       29 0f		      and	#$f
+    717  18df		       85 ff		      sta	TARGET_POSITION
+    718  18e1		       a5 51		      lda	TANK_POSITION
+    719  18e3		       29 0f		      and	#$f
+    720  18e5		       c5 ff		      cmp	TARGET_POSITION
+    721  18e7		       30 02		      bmi	.not_target_left
+    722  18e9		       e6 61		      inc	IN_LOS
+    723  18eb				   .not_target_left
+    724  18eb		       4c 3a 19 	      jmp	.done_check
+    725  18ee				   .not_left
+    726  18ee		       ca		      dex
+    727  18ef		       d0 23		      bne	.not_down
+    728  18f1
+    729  18f1		       ad 5c 1d 	      lda	PLAYER_POSITION
+    730  18f4		       29 0f		      and	#$f
+    731  18f6		       85 ff		      sta	TARGET_POSITION
+    732  18f8		       a5 51		      lda	TANK_POSITION
+    733  18fa		       29 0f		      and	#$f
+    734  18fc		       c5 ff		      cmp	TARGET_POSITION
+    735  18fe		       d0 11		      bne	.not_target_down
+    736  1900
+    737  1900		       ad 5c 1d 	      lda	PLAYER_POSITION
+    738  1903		       29 f0		      and	#$f0
+    739  1905		       85 ff		      sta	TARGET_POSITION
+    740  1907		       a5 51		      lda	TANK_POSITION
+    741  1909		       29 f0		      and	#$f0
+    742  190b		       c5 ff		      cmp	TARGET_POSITION
+    743  190d		       10 02		      bpl	.not_target_down
+    744  190f		       e6 61		      inc	IN_LOS
+    745  1911				   .not_target_down
+    746  1911		       4c 3a 19 	      jmp	.done_check
+    747  1914				   .not_down
+    748  1914		       ca		      dex
+    749  1915		       d0 23		      bne	.not_right
+    750  1917
+    751  1917		       ad 5c 1d 	      lda	PLAYER_POSITION
+    752  191a		       29 f0		      and	#$f0
+    753  191c		       85 ff		      sta	TARGET_POSITION
+    754  191e		       a5 51		      lda	TANK_POSITION
+    755  1920		       29 f0		      and	#$f0
+    756  1922		       c5 ff		      cmp	TARGET_POSITION
+    757  1924		       d0 11		      bne	.not_target_right
+    758  1926
+    759  1926		       ad 5c 1d 	      lda	PLAYER_POSITION
+    760  1929		       29 0f		      and	#$f
+    761  192b		       85 ff		      sta	TARGET_POSITION
+    762  192d		       a5 51		      lda	TANK_POSITION
+    763  192f		       29 0f		      and	#$f
+    764  1931		       c5 ff		      cmp	TARGET_POSITION
+    765  1933		       10 02		      bpl	.not_target_right
+    766  1935		       e6 61		      inc	IN_LOS
+    767  1937				   .not_target_right
+    768  1937		       4c 3a 19 	      jmp	.done_check
+    769  193a				   .not_right
+    770  193a				   .done_check
+    771  193a		       60		      rts
+    772  193b
+    773  193b
+    774  193b					      subroutine
+    775  193b				   load_tank
+    776  193b
+    777  193b		       a6 5f		      ldx	TANK_INDEX
+    778  193d		       bd 53 1d 	      lda	tank_state,x
+    779  1940		       85 50		      sta	TANK_STATE
+    780  1942		       bd 5c 1d 	      lda	tank_position,x
+    781  1945		       85 51		      sta	TANK_POSITION
+    782  1947		       bd 6e 1d 	      lda	bullet_position,x
+    783  194a		       85 52		      sta	BULLET_POSITION
+    784  194c
+    785  194c		       a5 50		      lda	TANK_STATE
+    786  194e		       29 03		      and	#STATE_ROTATION
+    787  1950		       85 12		      sta	ROTATION
+    788  1952
+    789  1952		       a5 51		      lda	TANK_POSITION
+    790  1954		       85 11		      sta	POSITION
+    791  1956		       20 14 1a 	      jsr	neighbor
+    792  1959		       a6 12		      ldx	ROTATION
+    793  195b		       b5 18		      lda	NEIGHBOR_UP,x
+    794  195d		       85 53		      sta	TANK_FRONT
+    795  195f
+    796  195f		       a5 52		      lda	BULLET_POSITION
+    797  1961		       85 11		      sta	POSITION
+    798  1963		       20 14 1a 	      jsr	neighbor
+    799  1966		       a6 12		      ldx	ROTATION
+    800  1968		       b5 18		      lda	NEIGHBOR_UP,x
+    801  196a		       85 54		      sta	BULLET_FRONT
+    802  196c
+    803  196c		       e8		      inx
+    804  196d		       e8		      inx
+    805  196e		       8a		      txa
+    806  196f		       29 03		      and	#3
+    807  1971		       aa		      tax
+    808  1972		       b5 18		      lda	NEIGHBOR_UP,x
+    809  1974		       85 55		      sta	BULLET_BEHIND
+    810  1976
+    811  1976							; TODO: add ammo and details loading
+    812  1976		       a6 5f		      ldx	TANK_INDEX
+    813  1978		       f0 06		      beq	.not_loading_player
+    814  197a		       ca		      dex
+    815  197b		       bd 66 1d 	      lda	ENEMY_DETAIL,x
+    816  197e		       85 56		      sta	TANK_DETAIL
+    817  1980				   .not_loading_player
+    818  1980
+    819  1980		       a6 5e		      ldx	OTHER_TANK_INDEX
+    820  1982		       30 0f		      bmi	.skip_other_tank
+    821  1984		       bd 53 1d 	      lda	tank_state,x
+    822  1987		       85 58		      sta	OTHER_TANK_STATE
+    823  1989		       bd 5c 1d 	      lda	tank_position,x
+    824  198c		       85 59		      sta	OTHER_TANK_POSITION
+    825  198e		       bd 6e 1d 	      lda	bullet_position,x
+    826  1991		       85 5a		      sta	OTHER_BULLET_POSITION
+    827  1993				   .skip_other_tank
+    828  1993		       60		      rts
+    829  1994
+    830  1994					      subroutine
+    831  1994				   store_tank
+    832  1994
+    833  1994		       a6 5f		      ldx	TANK_INDEX
+    834  1996		       a5 50		      lda	TANK_STATE
+    835  1998		       9d 53 1d 	      sta	tank_state,x
+    836  199b		       a5 51		      lda	TANK_POSITION
+    837  199d		       9d 5c 1d 	      sta	tank_position,x
+    838  19a0		       a5 52		      lda	BULLET_POSITION
+    839  19a2		       9d 6e 1d 	      sta	bullet_position,x
+    840  19a5
+    841  19a5		       a6 5e		      ldx	OTHER_TANK_INDEX
+    842  19a7		       30 0f		      bmi	.skip_other_tank
+    843  19a9		       a5 58		      lda	OTHER_TANK_STATE
+    844  19ab		       9d 53 1d 	      sta	tank_state,x
+    845  19ae		       a5 59		      lda	OTHER_TANK_POSITION
+    846  19b0		       9d 5c 1d 	      sta	tank_position,x
+    847  19b3		       a5 5a		      lda	OTHER_BULLET_POSITION
+    848  19b5		       9d 6e 1d 	      sta	bullet_position,x
+    849  19b8				   .skip_other_tank
+    850  19b8		       60		      rts
+    851  19b9
+    852  19b9
+    853  19b9							; draw_entity
+    854  19b9					      subroutine
+    855  19b9				   draw_entity
+    856  19b9		       18		      clc
+    857  19ba		       a5 04		      lda	SCREEN_CURRENT
+    858  19bc		       65 12		      adc	ROTATION
+    859  19be		       85 04		      sta	SCREEN_CURRENT
+    860  19c0		       18		      clc
+    861  19c1		       a5 10		      lda	STATE
+    862  19c3		       29 10		      and	#STATE_SHOOTING
+    863  19c5		       d0 2f		      bne	.normal
+    864  19c7		       a5 10		      lda	STATE
+    865  19c9		       29 0c		      and	#STATE_MOVING|STATE_ROTATING
+    866  19cb		       f0 29		      beq	.normal
+    867  19cd		       29 04		      and	#STATE_MOVING
+    868  19cf		       f0 1f		      beq	.rotating
+    869  19d1				   .moving
+    870  19d1		       a0 00		      ldy	#0
+    871  19d3		       a5 04		      lda	SCREEN_CURRENT
+    872  19d5		       69 04		      adc	#OFFSET_IB_LOWER
+    873  19d7		       85 04		      sta	SCREEN_CURRENT
+    874  19d9		       20 b7 1a 	      jsr	position2screen
+    875  19dc		       20 ae 1a 	      jsr	draw_screen
+    876  19df		       20 14 1a 	      jsr	neighbor
+    877  19e2		       a5 13		      lda	FRONT
+    878  19e4		       85 11		      sta	POSITION
+    879  19e6		       18		      clc
+    880  19e7		       a5 04		      lda	SCREEN_CURRENT
+    881  19e9		       69 04		      adc	#OFFSET_IB_UPPER-OFFSET_IB_LOWER
+    882  19eb		       85 04		      sta	SCREEN_CURRENT
+    883  19ed		       4c f6 19 	      jmp	.draw
+    884  19f0				   .rotating
+    885  19f0		       a5 04		      lda	SCREEN_CURRENT
+    886  19f2		       69 18		      adc	#24
+    887  19f4		       85 04		      sta	SCREEN_CURRENT
+    888  19f6				   .normal
+    889  19f6							; do nothing
+    890  19f6				   .draw
+    891  19f6		       a0 00		      ldy	#0
+    892  19f8		       20 b7 1a 	      jsr	position2screen
+    893  19fb		       4c ae 1a 	      jmp	draw_screen
+    894  19fe
+    895  19fe
+    896  19fe					      subroutine
+    897  19fe				   read_target
+    898  19fe							; position loaded
+    899  19fe		       20 b7 1a 	      jsr	position2screen
+    900  1a01		       a0 00		      ldy	#0
+    901  1a03		       b1 00		      lda	(PTR_SCREEN),y
+    902  1a05		       85 60		      sta	TARGET
+    903  1a07		       60		      rts
+    904  1a08
+    905  1a08
+    906  1a08					      subroutine
+    907  1a08				   empty_position
+    908  1a08		       20 b7 1a 	      jsr	position2screen
+    909  1a0b		       a0 00		      ldy	#0
+    910  1a0d		       a9 00		      lda	#SCREEN_EMPTY
+    911  1a0f		       85 04		      sta	SCREEN_CURRENT
+    912  1a11		       4c ae 1a 	      jmp	draw_screen
+    913  1a14
+    914  1a14
+    915  1a14							; neighbor
+    916  1a14					      subroutine
+    917  1a14				   neighbor
+    918  1a14
+    919  1a14		       18		      clc
+    920  1a15		       a5 11		      lda	POSITION
+    921  1a17		       69 10		      adc	#$10
+    922  1a19		       85 1a		      sta	NEIGHBOR_DOWN
+    923  1a1b		       18		      clc
+    924  1a1c		       e9 1f		      sbc	#$1f
+    925  1a1e		       85 18		      sta	NEIGHBOR_UP
+    926  1a20		       a5 11		      lda	POSITION
+    927  1a22		       29 f0		      and	#$f0
+    928  1a24		       85 19		      sta	NEIGHBOR_LEFT
+    929  1a26		       85 1b		      sta	NEIGHBOR_RIGHT
+    930  1a28		       a5 11		      lda	POSITION
+    931  1a2a		       29 0f		      and	#$f
+    932  1a2c		       aa		      tax		; left_x
+    933  1a2d		       ca		      dex
+    934  1a2e		       a8		      tay		; right_x
+    935  1a2f		       c8		      iny
+    936  1a30		       18		      clc
+    937  1a31		       8a		      txa
+    938  1a32		       29 0f		      and	#$f
+    939  1a34		       65 19		      adc	NEIGHBOR_LEFT
+    940  1a36		       85 19		      sta	NEIGHBOR_LEFT
+    941  1a38		       18		      clc
+    942  1a39		       98		      tya
+    943  1a3a		       29 0f		      and	#$f
+    944  1a3c		       65 1b		      adc	NEIGHBOR_RIGHT
+    945  1a3e		       85 1b		      sta	NEIGHBOR_RIGHT
+    946  1a40		       60		      rts
+    947  1a41
+    948  1a41
+    949  1a41							; zp
+    950  1a41		       00 fd	   PTR_TILE   =	PTR_TEMP
+    951  1a41		       00 ff	   LEVEL_BYTE =	TEMP
+    952  1a41
+    953  1a41							; draw_tile
+    954  1a41							; -x-
+    955  1a41					      subroutine
+    956  1a41				   draw_tile
+    957  1a41
+    958  1a41		       a9 01		      lda	#COLOR_WHITE
+    959  1a43		       85 05		      sta	COLOR_CURRENT
+    960  1a45		       a9 13		      lda	#<tile_data
+    961  1a47		       85 fd		      sta	PTR_TILE
+    962  1a49		       a9 1d		      lda	#>tile_data
+    963  1a4b		       85 fe		      sta	PTR_TILE+1
+    964  1a4d		       a9 00		      lda	#$00
+    965  1a4f		       85 11		      sta	POSITION
+    966  1a51
+    967  1a51				   .byte
+    968  1a51		       20 b7 1a 	      jsr	position2screen
+    969  1a54		       a0 00		      ldy	#0
+    970  1a56		       b1 fd		      lda	(PTR_TILE),y
+    971  1a58		       85 ff		      sta	LEVEL_BYTE
+    972  1a5a
+    973  1a5a		       a0 03		      ldy	#3
+    974  1a5c				   .tile
+    975  1a5c		       a5 ff		      lda	LEVEL_BYTE
+    976  1a5e		       29 03		      and	#3
+    977  1a60		       85 04		      sta	SCREEN_CURRENT
+    978  1a62		       20 ae 1a 	      jsr	draw_screen
+    979  1a65		       a5 ff		      lda	LEVEL_BYTE
+    980  1a67		       4a		      lsr
+    981  1a68		       4a		      lsr
+    982  1a69		       85 ff		      sta	LEVEL_BYTE
+    983  1a6b		       88		      dey
+    984  1a6c		       10 ee		      bpl	.tile
+    985  1a6e
+    986  1a6e		       e6 fd		      inc	PTR_TILE
+    987  1a70		       d0 02		      bne	.0
+    988  1a72		       e6 fe		      inc	PTR_TILE+1
+    989  1a74				   .0
+    990  1a74
+    991  1a74		       18		      clc
+    992  1a75		       a5 11		      lda	POSITION
+    993  1a77		       69 04		      adc	#4
+    994  1a79		       85 11		      sta	POSITION
+    995  1a7b		       d0 d4		      bne	.byte
+    996  1a7d
+    997  1a7d		       60		      rts
+    998  1a7e
+    999  1a7e
+   1000  1a7e							; clear_screen
+   1001  1a7e							; -x-
+   1002  1a7e					      subroutine
+   1003  1a7e				   clear_screen
+   1004  1a7e
+   1005  1a7e		       a0 00		      ldy	#0
+   1006  1a80		       a9 00		      lda	#SCREEN_EMPTY
+   1007  1a82		       85 04		      sta	SCREEN_CURRENT
+   1008  1a84		       a9 00		      lda	#COLOR_BLACK
+   1009  1a86		       85 05		      sta	COLOR_CURRENT
+   1010  1a88
+   1011  1a88		       a9 00		      lda	#<SCREEN_RAM
+   1012  1a8a		       85 00		      sta	PTR_SCREEN
+   1013  1a8c		       a9 1e		      lda	#>SCREEN_RAM
+   1014  1a8e		       85 01		      sta	PTR_SCREEN+1
+   1015  1a90		       a9 00		      lda	#<COLOR_RAM
+   1016  1a92		       85 02		      sta	PTR_COLOR
+   1017  1a94		       a9 96		      lda	#>COLOR_RAM
+   1018  1a96		       85 03		      sta	PTR_COLOR+1
+   1019  1a98				   .loop
+   1020  1a98		       20 ae 1a 	      jsr	draw_screen
+   1021  1a9b		       e6 00		      inc	PTR_SCREEN
+   1022  1a9d		       d0 02		      bne	.0
+   1023  1a9f		       e6 01		      inc	PTR_SCREEN+1
+   1024  1aa1				   .0
+   1025  1aa1		       e6 02		      inc	PTR_COLOR
+   1026  1aa3		       d0 02		      bne	.1
+   1027  1aa5		       e6 03		      inc	PTR_COLOR+1
+   1028  1aa7				   .1
+   1029  1aa7		       a5 01		      lda	PTR_SCREEN+1
+   1030  1aa9		       c9 20		      cmp	#>SCREEN_RAM+2
+   1031  1aab		       d0 eb		      bne	.loop
+   1032  1aad		       60		      rts
+   1033  1aae
+   1034  1aae
+   1035  1aae							; draw_screen
+   1036  1aae							; -xY
+   1037  1aae					      subroutine
+   1038  1aae				   draw_screen
+   1039  1aae
+   1040  1aae		       a5 04		      lda	SCREEN_CURRENT
+   1041  1ab0		       91 00		      sta	(PTR_SCREEN),y
+   1042  1ab2		       a5 05		      lda	COLOR_CURRENT
+   1043  1ab4		       91 02		      sta	(PTR_COLOR),y
+   1044  1ab6		       60		      rts
+   1045  1ab7
+   1046  1ab7
+   1047  1ab7							; position2screen
+   1048  1ab7							; --y
+   1049  1ab7					      subroutine
+   1050  1ab7				   position2screen
+   1051  1ab7
+   1052  1ab7		       18		      clc
+   1053  1ab8		       a5 11		      lda	POSITION
+   1054  1aba		       29 0f		      and	#$f
+   1055  1abc		       69 45		      adc	#<SCREEN_RAM+<GAME_OFFSET
+   1056  1abe		       85 00		      sta	PTR_SCREEN
+   1057  1ac0		       a9 1e		      lda	#>SCREEN_RAM+>GAME_OFFSET
+   1058  1ac2		       69 00		      adc	#0
+   1059  1ac4		       85 01		      sta	PTR_SCREEN+1
+   1060  1ac6
+   1061  1ac6		       18		      clc
+   1062  1ac7		       a5 11		      lda	POSITION
+   1063  1ac9		       29 0f		      and	#$f
+   1064  1acb		       69 45		      adc	#<COLOR_RAM+<GAME_OFFSET
+   1065  1acd		       85 02		      sta	PTR_COLOR
+   1066  1acf		       a9 96		      lda	#>COLOR_RAM+>GAME_OFFSET
+   1067  1ad1		       69 00		      adc	#0
+   1068  1ad3		       85 03		      sta	PTR_COLOR+1
+   1069  1ad5
+   1070  1ad5		       a5 11		      lda	POSITION
+   1071  1ad7		       4a		      lsr
+   1072  1ad8		       4a		      lsr
+   1073  1ad9		       4a		      lsr
+   1074  1ada		       4a		      lsr
+   1075  1adb		       f0 1e		      beq	.no_y
+   1076  1add		       aa		      tax
+   1077  1ade				   .y
+   1078  1ade
+   1079  1ade		       18		      clc
+   1080  1adf		       a5 00		      lda	PTR_SCREEN
+   1081  1ae1		       69 16		      adc	#SCREEN_WIDTH
+   1082  1ae3		       85 00		      sta	PTR_SCREEN
+   1083  1ae5		       a5 01		      lda	PTR_SCREEN+1
+   1084  1ae7		       69 00		      adc	#0
+   1085  1ae9		       85 01		      sta	PTR_SCREEN+1
+   1086  1aeb
+   1087  1aeb		       18		      clc
+   1088  1aec		       a5 02		      lda	PTR_COLOR
+   1089  1aee		       69 16		      adc	#SCREEN_WIDTH
+   1090  1af0		       85 02		      sta	PTR_COLOR
+   1091  1af2		       a5 03		      lda	PTR_COLOR+1
+   1092  1af4		       69 00		      adc	#0
+   1093  1af6		       85 03		      sta	PTR_COLOR+1
+   1094  1af8
+   1095  1af8		       ca		      dex
+   1096  1af9		       d0 e3		      bne	.y
+   1097  1afb				   .no_y
+   1098  1afb		       60		      rts
+------- FILE bimgus_game.s
+     38  1afc
+------- FILE ./sound_effects.s LEVEL 2 PASS 3
+      0  1afc					      include	"./sound_effects.s"
+      1  1afc							; sound_effects.s
+      2  1afc							;
+      3  1afc							; playing sound effects
+      4  1afc
+      5  1afc							; SOUND EFFECTS PRECEDENCE (most important at top)
+      6  1afc							; Player explosion
+      7  1afc							; Enemy explosion
+      8  1afc							; Player shoot + enemy shoot
+      9  1afc							; Player movement (move fwd/rotate)
+     10  1afc
+     11  1afc							; zero page variables
+     12  1afc		       00 24	   SFX_SAVE_ACC =	$24
+     13  1afc		       00 25	   SFX_BITMASK =	$25
+     14  1afc
+     15  1afc		       00 01	   MOVE_BM    =	%1
+     16  1afc		       00 02	   SHOOT_BM   =	%10
+     17  1afc		       00 04	   EXPLODE_BM =	%100
+     18  1afc
+     19  1afc							; sound effect parameters
+     20  1afc		       00 eb	   STARTP     =	235	; initial pitch of player explosion
+     21  1afc		       00 02	   DECP       =	2	; rate of decrease
+     22  1afc		       00 c3	   FINALP     =	195	; final pitch of player explosion
+     23  1afc		       00 d7	   STARTE     =	215	; initial pitch of enemy explosion
+     24  1afc		       00 02	   INCE       =	2	; rate of increase
+     25  1afc		       00 f5	   FINALE     =	245	; final pitch of enemy explosion
+     26  1afc		       00 08	   STARTBV    =	8	; initial velocity of bullet
+     27  1afc		       00 eb	   STARTB     =	235	; initial pitch of bullet
+     28  1afc		       00 e3	   FINALB     =	227	; final pitch of bullet
+     29  1afc		       00 e1	   STARTR     =	225	; initial pitch of rock
+     30  1afc		       00 d9	   FINALR     =	217	; final pitch of rock
+     31  1afc		       00 d7	   STARTM     =	215	; initial pitch of move
+     32  1afc
+     33  1afc				   reset_sfx_bitmask
+     34  1afc		       a9 00		      lda	#0
+     35  1afe		       85 25		      sta	SFX_BITMASK
+     36  1b00		       60		      rts
+     37  1b01
+     38  1b01							; player explosion sound effect
+     39  1b01				   playerExplosion
+     40  1b01							; check if it was an enemy who died
+     41  1b01		       a5 5e		      lda	OTHER_TANK_INDEX
+     42  1b03		       d0 30		      bne	enemyExplosion
+     43  1b05							; play player explosion noise
+     44  1b05		       85 24		      sta	SFX_SAVE_ACC	; save accumulator so it can be restored at the end, just in case
+     45  1b07		       a5 25		      lda	SFX_BITMASK
+     46  1b09		       29 04		      and	#EXPLODE_BM
+     47  1b0b		       d0 64		      bne	exit_sound_effect
+     48  1b0d		       20 74 1b 	      jsr	reset_pitches
+     49  1b10		       a2 00		      ldx	#0
+     50  1b12				   playerExplosionNext
+     51  1b12		       bd d7 1b 	      lda	velocities,X	; get the current note velocity
+     52  1b15		       8d 0e 90 	      sta	SV	; set speakers to volume in accumulator
+     53  1b18							; check if we should exit on this note
+     54  1b18		       f0 51		      beq	exit_expl	; if volume is 0, exit the main loop
+     55  1b1a							; we should not exit on this note
+     56  1b1a		       e8		      inx		; move on
+     57  1b1b							; set up the inner loop
+     58  1b1b		       a0 eb		      ldy	#STARTP	; load the first pitch into the Y register
+     59  1b1d							; inner loop (decreasing pitch)
+     60  1b1d				   innerP
+     61  1b1d		       8c 0a 90 	      sty	SB	; write the note to the bass channel
+     62  1b20		       8c 0d 90 	      sty	SN	; write the note to the noise channel
+     63  1b23							; set up the jiffy waiting loop
+     64  1b23		       a5 a2		      lda	JC	; load jiffy clock into accumulator
+     65  1b25		       69 01		      adc	#1	; accumulator now stores the desired end time (one jiffy away)
+     66  1b27							; wait one jiffy
+     67  1b27				   jiffyP
+     68  1b27		       c5 a2		      cmp	JC
+     69  1b29		       d0 fc		      bne	jiffyP
+     70  1b2b							; decrease pitch until it hits final pitch
+     71  1b2b		       98		      tya
+     72  1b2c		       e9 02		      sbc	#DECP	; decrease pitch
+     73  1b2e		       a8		      tay
+     74  1b2f		       c0 c3		      cpy	#FINALP	; check current pitch against final pitch
+     75  1b31		       d0 ea		      bne	innerP	; if we haven't hit it yet, loop the inner loop
+     76  1b33							; move on to the next velocity value
+     77  1b33		       f0 dd		      beq	playerExplosionNext	; restart main loop
+     78  1b35
+     79  1b35							; enemy explosion sound effect
+     80  1b35				   enemyExplosion
+     81  1b35		       85 24		      sta	SFX_SAVE_ACC	; save accumulator so it can be restored at the end, just in case
+     82  1b37		       a5 25		      lda	SFX_BITMASK
+     83  1b39		       29 04		      and	#EXPLODE_BM
+     84  1b3b		       d0 34		      bne	exit_sound_effect
+     85  1b3d		       20 74 1b 	      jsr	reset_pitches
+     86  1b40		       a2 00		      ldx	#0
+     87  1b42				   enemyExplosionNext
+     88  1b42		       bd d7 1b 	      lda	velocities,X	; get the current note velocity
+     89  1b45		       8d 0e 90 	      sta	SV	; set speakers to volume in accumulator
+     90  1b48							; check if we should exit on this note
+     91  1b48		       f0 21		      beq	exit_expl	; if volume is 0, exit the main loop
+     92  1b4a							; we should not exit on this note
+     93  1b4a		       e8		      inx		; move on
+     94  1b4b							; set up the inner loop
+     95  1b4b		       a0 d7		      ldy	#STARTE	; load the first pitch into the Y register
+     96  1b4d							; inner loop (decreasing pitch)
+     97  1b4d				   innerE
+     98  1b4d		       8c 0d 90 	      sty	SN	; write the note to the noise channel
+     99  1b50							; set up the jiffy waiting loop
+    100  1b50		       a5 a2		      lda	JC	; load jiffy clock into accumulator
+    101  1b52		       69 01		      adc	#1	; accumulator now stores the desired end time (one jiffy away)
+    102  1b54							; wait one jiffy
+    103  1b54				   jiffyE
+    104  1b54		       c5 a2		      cmp	JC
+    105  1b56		       d0 fc		      bne	jiffyE
+    106  1b58							; increase pitch until it hits final pitch
+    107  1b58		       98		      tya
+    108  1b59		       18		      clc
+    109  1b5a		       69 02		      adc	#INCE	; increase pitch
+    110  1b5c		       a8		      tay
+    111  1b5d		       c0 f5		      cpy	#FINALE	; check current pitch against final pitch
+    112  1b5f		       d0 ec		      bne	innerE	; if we haven't hit it yet, loop the inner loop
+    113  1b61							; move on to the next velocity value
+    114  1b61		       f0 df		      beq	enemyExplosionNext	; restart main loop
+    115  1b63
+    116  1b63							; exit sfx, update bitmask to prevent repeat sfx
+    117  1b63				   exit_move
+    118  1b63		       a5 25		      lda	SFX_BITMASK
+    119  1b65		       09 01		      ora	#MOVE_BM
+    120  1b67		       85 25		      sta	SFX_BITMASK
+    121  1b69		       d0 06		      bne	exit_sound_effect
+    122  1b6b				   exit_expl
+    123  1b6b		       a5 25		      lda	SFX_BITMASK
+    124  1b6d		       09 04		      ora	#EXPLODE_BM
+    125  1b6f		       85 25		      sta	SFX_BITMASK
+    126  1b71							; generic cleanup
+    127  1b71				   exit_sound_effect
+    128  1b71		       a5 24		      lda	SFX_SAVE_ACC	; restore accumulator
+    129  1b73		       60		      rts
+    130  1b74
+    131  1b74							; generic entry
+    132  1b74				   reset_pitches
+    133  1b74		       a9 00		      lda	#0
+    134  1b76		       8d 0a 90 	      sta	SB	; reset the pitches in the four channels
+    135  1b79		       8d 0b 90 	      sta	SA
+    136  1b7c		       8d 0c 90 	      sta	SS
+    137  1b7f		       8d 0d 90 	      sta	SN
+    138  1b82		       60		      rts
+    139  1b83
+    140  1b83							; shoot bullet sound effect
+    141  1b83				   sfx_bullet
+    142  1b83		       85 24		      sta	SFX_SAVE_ACC	; save accumulator so it can be restored at the end, just in case
+    143  1b85		       a5 25		      lda	SFX_BITMASK
+    144  1b87		       29 02		      and	#SHOOT_BM
+    145  1b89		       d0 e6		      bne	exit_sound_effect
+    146  1b8b		       20 74 1b 	      jsr	reset_pitches
+    147  1b8e		       a0 eb		      ldy	#STARTB	; load the first pitch into the Y register
+    148  1b90		       a9 08		      lda	#STARTBV	; load the initial note velocity
+    149  1b92		       8d 0e 90 	      sta	SV	; set speaker to velocity
+    150  1b95							; inner loop (decreasing pitch)
+    151  1b95				   innerB
+    152  1b95		       ce 0e 90 	      dec	SV	; decrease velocity by 1
+    153  1b98		       8c 0b 90 	      sty	SA	; write the note to the alto channel
+    154  1b9b		       8c 0d 90 	      sty	SN	; write the note to the soprano channel
+    155  1b9e							; set up the jiffy waiting loop
+    156  1b9e		       a5 a2		      lda	JC	; load jiffy clock into accumulator
+    157  1ba0		       69 01		      adc	#1	; accumulator now stores the desired end time (one jiffy away)
+    158  1ba2							; wait one jiffy
+    159  1ba2				   jiffyB
+    160  1ba2		       c5 a2		      cmp	JC
+    161  1ba4		       d0 fc		      bne	jiffyB
+    162  1ba6							; decrease pitch until it hits final pitch
+    163  1ba6		       88		      dey		; decrement pitch by 1
+    164  1ba7		       c0 e3		      cpy	#FINALB	; check current pitch against final pitch
+    165  1ba9		       d0 ea		      bne	innerB	; if we haven't hit it yet, loop the inner loop
+    166  1bab							; if we are here, it is done
+    167  1bab		       a5 25		      lda	SFX_BITMASK
+    168  1bad		       09 02		      ora	#SHOOT_BM
+    169  1baf		       85 25		      sta	SFX_BITMASK
+    170  1bb1		       d0 be		      bne	exit_sound_effect	; restart main loop
+    171  1bb3
+    172  1bb3
+    173  1bb3							; player movement sound effect
+    174  1bb3				   player_movement
+    175  1bb3		       85 24		      sta	SFX_SAVE_ACC	; save accumulator so it can be restored at the end, just in case
+    176  1bb5		       a5 25		      lda	SFX_BITMASK
+    177  1bb7		       29 01		      and	#MOVE_BM
+    178  1bb9		       d0 b6		      bne	exit_sound_effect
+    179  1bbb		       20 74 1b 	      jsr	reset_pitches
+    180  1bbe		       a2 00		      ldx	#0
+    181  1bc0		       a0 d7		      ldy	#STARTM	; load the first pitch into the Y register
+    182  1bc2		       8c 0d 90 	      sty	SN	; write the note to the noise channel
+    183  1bc5				   player_movement_next
+    184  1bc5		       bd db 1b 	      lda	mov_velocities,X	; get the current note velocity
+    185  1bc8		       8d 0e 90 	      sta	SV	; set speakers to volume in accumulator
+    186  1bcb							; check if we should exit on this note
+    187  1bcb		       f0 96		      beq	exit_move	; if volume is 0, exit the main loop
+    188  1bcd							; we should not exit on this note
+    189  1bcd		       e8		      inx		; move on
+    190  1bce							; set up the jiffy waiting loop
+    191  1bce		       a4 a2		      ldy	JC	; load jiffy clock into Y register
+    192  1bd0		       c8		      iny		; Y register now stores the desired end time (one jiffy away)
+    193  1bd1							; wait one jiffy
+    194  1bd1				   jiffyM
+    195  1bd1		       c4 a2		      cpy	JC
+    196  1bd3		       d0 fc		      bne	jiffyM
+    197  1bd5							; move on to the next velocity value
+    198  1bd5		       f0 ee		      beq	player_movement_next	; restart main loop
+    199  1bd7
+    200  1bd7
+    201  1bd7							; define explosion velocities
+    202  1bd7				   velocities
+    203  1bd7		       09 06 03 00	      dc	9, 6, 3, 0
+    204  1bdb				   mov_velocities
+    205  1bdb		       03 06 03 00	      dc	3, 6, 3, 0
+------- FILE bimgus_game.s
+     40  1bdf
+     41  1bdf				  -	      if	. >= $1c00
+     42  1bdf				  -	      echo	"ERROR: out of memory!"
+     43  1bdf				  -	      err
+     44  1bdf					      endif
